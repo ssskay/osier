@@ -135,8 +135,7 @@ struct RecordingRow: View {
     let url: URL
     let audioRecorder: AudioRecorder
     let settings: Settings
-    @State private var transcribedText: String = ""
-    @State private var isTranscribing = false
+    @StateObject private var transcriptionService = TranscriptionService()
     @State private var showTranscription = false
     
     var body: some View {
@@ -154,13 +153,20 @@ struct RecordingRow: View {
                 }
                 
                 Button(action: {
-                    transcribeAudio()
+                    Task {
+                        do {
+                            _ = try await transcriptionService.transcribeAudio(url: url, settings: settings)
+                            showTranscription = true
+                        } catch {
+                            print("Transcription failed: \(error)")
+                        }
+                    }
                 }) {
                     Image(systemName: "waveform")
                         .font(.title2)
                         .foregroundColor(.blue)
                 }
-                .disabled(isTranscribing)
+                .disabled(transcriptionService.isTranscribing)
                 
                 Button(action: {
                     audioRecorder.deleteRecording(url: url)
@@ -171,75 +177,16 @@ struct RecordingRow: View {
                 }
             }
             
-            if isTranscribing {
+            if transcriptionService.isTranscribing {
                 ProgressView("Transcribing...")
                     .padding(.vertical, 4)
             }
             
-            if !transcribedText.isEmpty {
-                TranscriptionView(transcribedText: transcribedText, isExpanded: $showTranscription)
+            if !transcriptionService.transcribedText.isEmpty {
+                TranscriptionView(transcribedText: transcriptionService.transcribedText, isExpanded: $showTranscription)
             }
         }
         .padding(.vertical, 4)
-    }
-    
-    private func transcribeAudio() {
-        isTranscribing = true
-        
-        guard let modelPath = UserDefaults.standard.string(forKey: "selectedModelPath"),
-              let context = WhisperContext(modelURL: URL(fileURLWithPath: modelPath))
-        else {
-            print("Failed to initialize WhisperContext")
-            isTranscribing = false
-            return
-        }
-        
-        DispatchQueue.global(qos: .userInitiated).async {
-            guard let samples = WhisperContext.convertAudioFileToPCM(fileURL: url) else {
-                print("Failed to convert audio to PCM")
-                DispatchQueue.main.async {
-                    isTranscribing = false
-                }
-                return
-            }
-            
-            var params = whisper_full_default_params(WHISPER_SAMPLING_GREEDY)
-            params.print_realtime = false
-            params.print_progress = false
-            params.single_segment = false
-            params.no_timestamps = !settings.viewModel.showTimestamps
-            params.suppress_blank = settings.viewModel.suppressBlankAudio
-            params.translate = settings.viewModel.translateToEnglish
-            
-            // Set language
-            if let languageStr = strdup(settings.viewModel.selectedLanguage) {
-                params.language = UnsafePointer(languageStr)
-                
-                if let text = context.processAudio(samples: samples, params: params) {
-                    free(languageStr)
-                    DispatchQueue.main.async {
-                        let cleanedText = text
-                            .replacingOccurrences(of: "[MUSIC]", with: "")
-                            .replacingOccurrences(of: "[BLANK_AUDIO]", with: "")
-                            .trimmingCharacters(in: .whitespacesAndNewlines)
-                        
-                        transcribedText = cleanedText.isEmpty ? "No speech detected in the audio" : cleanedText
-                        isTranscribing = false
-                        showTranscription = true
-                    }
-                } else {
-                    free(languageStr)
-                    DispatchQueue.main.async {
-                        isTranscribing = false
-                    }
-                }
-            } else {
-                print("Failed to allocate memory for language string")
-                DispatchQueue.main.async {
-                    isTranscribing = false
-                }
-            }
-        }
     }
 }
 
