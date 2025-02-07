@@ -18,10 +18,12 @@ class ShortcutManager {
         print("ShortcutManager init")
         
         var activeVm: IndicatorViewModel?
-        
+
         KeyboardShortcuts.onKeyUp(for: .toggleRecord) {
             
+            print("Toggle record, active = \(activeVm)")
             if activeVm != nil {
+            
                 IndicatorWindowManager.shared.stopRecording()
                 activeVm = nil
             } else {
@@ -44,18 +46,20 @@ class ShortcutManager {
             }
         }
 
-        KeyboardShortcuts.onKeyUp(for: .escape) { [weak activeVm] in
+        KeyboardShortcuts.onKeyUp(for: .escape) {
+            
+            print("active \(activeVm)")
             if let vm = activeVm {
                 
-                if vm.isRecording {
-                    IndicatorWindowManager.shared.stopForce()
-                    activeVm = nil
+//                if vm.isRecording {
+                IndicatorWindowManager.shared.stopForce()
+                activeVm = nil
 
-                } else {
-                    IndicatorWindowManager.shared.stopRecording()
-                    activeVm = nil
-
-                }
+//                } else {
+//                    IndicatorWindowManager.shared.stopRecording()
+//                    activeVm = nil
+//
+//                }
             }
         }
     }

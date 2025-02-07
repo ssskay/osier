@@ -1,5 +1,5 @@
-import Foundation
 import AVFoundation
+import Foundation
 
 class TranscriptionService: ObservableObject {
     static let shared = TranscriptionService()
@@ -60,9 +60,9 @@ class TranscriptionService: ObservableObject {
         
         // Create an audio converter format for our desired output
         let converterFormat = AVAudioFormat(commonFormat: .pcmFormatFloat32,
-                                          sampleRate: sampleRate,
-                                          channels: 1,
-                                          interleaved: false)!
+                                            sampleRate: sampleRate,
+                                            channels: 1,
+                                            interleaved: false)!
         
         // Install tap on the input node with its native format
         inputNode.installTap(onBus: 0, bufferSize: UInt32(bufferSize), format: inputFormat) { [weak self] buffer, _ in
@@ -71,9 +71,9 @@ class TranscriptionService: ObservableObject {
             // Convert the buffer to the desired format
             let frameCount = AVAudioFrameCount(buffer.frameLength)
             guard let convertedBuffer = AVAudioPCMBuffer(pcmFormat: converterFormat,
-                                                       frameCapacity: frameCount) else { return }
+                                                         frameCapacity: frameCount) else { return }
             
-            let inputBlock: AVAudioConverterInputBlock = { inNumPackets, outStatus in
+            let inputBlock: AVAudioConverterInputBlock = { _, outStatus in
                 outStatus.pointee = .haveData
                 return buffer
             }
@@ -82,8 +82,8 @@ class TranscriptionService: ObservableObject {
             guard let converter = AVAudioConverter(from: inputFormat, to: converterFormat) else { return }
             
             converter.convert(to: convertedBuffer,
-                            error: &error,
-                            withInputFrom: inputBlock)
+                              error: &error,
+                              withInputFrom: inputBlock)
             
             if let error = error {
                 print("Conversion error: \(error)")
@@ -93,7 +93,7 @@ class TranscriptionService: ObservableObject {
             // Get the channel data as float array
             guard let channelData = convertedBuffer.floatChannelData?[0] else { return }
             let frames = Array(UnsafeBufferPointer(start: channelData,
-                                                 count: Int(convertedBuffer.frameLength)))
+                                                   count: Int(convertedBuffer.frameLength)))
             
             self.audioBuffer.append(contentsOf: frames)
             
@@ -105,8 +105,8 @@ class TranscriptionService: ObservableObject {
     }
     
     private func processAudioBuffer() {
-        guard let context = self.context,
-              let settings = self.settings,
+        guard let context = context,
+              let settings = settings,
               !isProcessing else { return }
         
         audioBufferLock.lock()
@@ -139,8 +139,9 @@ class TranscriptionService: ObservableObject {
             
             // Process with error handling
             guard context.pcmToMel(samples: Array(UnsafeBufferPointer(start: samplePtr, count: sampleCount)),
-                                 nSamples: sampleCount,
-                                 nThreads: nThreads) else {
+                                   nSamples: sampleCount,
+                                   nThreads: nThreads)
+            else {
                 print("Failed to convert PCM to MEL")
                 return
             }
@@ -151,7 +152,7 @@ class TranscriptionService: ObservableObject {
             }
             
             var params = WhisperFullParams()
-            // Use the same parameters as in file transcription 
+            // Use the same parameters as in file transcription
             params.strategy = settings.viewModel.useBeamSearch ? .beamSearch : .greedy
             params.nThreads = Int32(nThreads)
             params.noTimestamps = !settings.viewModel.showTimestamps
@@ -181,8 +182,9 @@ class TranscriptionService: ObservableObject {
             params.newSegmentCallback = callback
             params.newSegmentCallbackUserData = Unmanaged.passUnretained(self).toOpaque()
             
-            if !context.full(samples: Array(UnsafeBufferPointer(start: samplePtr, count: sampleCount)), 
-                           params: &params) {
+            if !context.full(samples: Array(UnsafeBufferPointer(start: samplePtr, count: sampleCount)),
+                             params: &params)
+            {
                 print("Failed to process audio segment")
             }
         }
@@ -212,7 +214,7 @@ class TranscriptionService: ObservableObject {
     }
     
     func transcribeAudio(url: URL, settings: Settings) async throws -> String {
-        guard let context = self.context ?? createContext() else {
+        guard let context = context ?? createContext() else {
             throw TranscriptionError.contextInitializationFailed
         }
         
@@ -261,6 +263,8 @@ class TranscriptionService: ObservableObject {
         params.temperature = Float(settings.viewModel.temperature)
         params.noSpeechThold = Float(settings.viewModel.noSpeechThreshold)
         params.initialPrompt = settings.viewModel.initialPrompt.isEmpty ? nil : settings.viewModel.initialPrompt
+        
+        print("params \(params)")
         
         if settings.viewModel.useBeamSearch {
             params.beamSearchBeamSize = Int32(settings.viewModel.beamSize)
@@ -347,9 +351,9 @@ class TranscriptionService: ObservableObject {
     private func convertAudioToPCM(fileURL: URL) throws -> [Float]? {
         let audioFile = try AVAudioFile(forReading: fileURL)
         let format = AVAudioFormat(commonFormat: .pcmFormatFloat32,
-                                 sampleRate: 16000,
-                                 channels: 1,
-                                 interleaved: false)!
+                                   sampleRate: 16000,
+                                   channels: 1,
+                                   interleaved: false)!
         
         // Create audio engine and nodes
         let engine = AVAudioEngine()
@@ -362,7 +366,7 @@ class TranscriptionService: ObservableObject {
         // Calculate buffer size and prepare buffers
         let lengthInFrames = UInt32(audioFile.length)
         let buffer = AVAudioPCMBuffer(pcmFormat: format,
-                                    frameCapacity: AVAudioFrameCount(lengthInFrames))
+                                      frameCapacity: AVAudioFrameCount(lengthInFrames))
         
         guard let buffer = buffer else { return nil }
         
@@ -370,7 +374,7 @@ class TranscriptionService: ObservableObject {
         let inputBlock: AVAudioConverterInputBlock = { inNumPackets, outStatus in
             do {
                 let tempBuffer = AVAudioPCMBuffer(pcmFormat: audioFile.processingFormat,
-                                                frameCapacity: AVAudioFrameCount(inNumPackets))
+                                                  frameCapacity: AVAudioFrameCount(inNumPackets))
                 guard let tempBuffer = tempBuffer else {
                     outStatus.pointee = .endOfStream
                     return nil
@@ -385,8 +389,8 @@ class TranscriptionService: ObservableObject {
         }
         
         converter.convert(to: buffer,
-                         error: &error,
-                         withInputFrom: inputBlock)
+                          error: &error,
+                          withInputFrom: inputBlock)
         
         if let error = error {
             print("Conversion error: \(error)")
@@ -396,7 +400,7 @@ class TranscriptionService: ObservableObject {
         // Convert to array of floats
         guard let channelData = buffer.floatChannelData else { return nil }
         return Array(UnsafeBufferPointer(start: channelData[0],
-                                       count: Int(buffer.frameLength)))
+                                         count: Int(buffer.frameLength)))
     }
 }
 
@@ -405,4 +409,4 @@ enum TranscriptionError: Error {
     case audioConversionFailed
     case processingFailed
     case languageAllocationFailed
-} 
+}

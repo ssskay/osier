@@ -71,8 +71,17 @@ class IndicatorWindowManager {
     }
     
     func stopForce() {
-        window?.orderOut(nil)
-        viewModel = nil
+        Task.detached { [weak self] in
+            
+            guard let self = self else { return }
+
+            await self.viewModel?.hideWithAnimation()
+            
+            await MainActor.run {
+                self.window?.orderOut(nil)
+                self.viewModel = nil
+            }
+        }
     }
 }
 

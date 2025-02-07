@@ -17,6 +17,7 @@ class IndicatorViewModel: ObservableObject {
     @Published var state: RecordingState = .idle
     @Published var isBlinking = false
     @Published var recorder: AudioRecorder = .shared
+    @Published var isVisible = false
     
     var delegate: IndicatorViewDelegate?
     private var blinkTimer: Timer?
@@ -43,17 +44,26 @@ class IndicatorViewModel: ObservableObject {
                 guard let self = self else { return }
                 
                 do {
+                    
+                    print("start decoding...")
                     let text = try await transcription.transcribeAudio(url: url, settings: .shared)
                     
                     insertTextUsingPasteboard(text)
-                    
                     print("Transcription result: \(text)")
+
                 } catch {
                     print("Error transcribing audio: \(error)")
                 }
                 
                 await self.delegate?.didFinishDecoding()
                 
+            }
+        } else {
+            
+            print("!!! Not found record url !!!")
+            
+            Task {
+                await self.delegate?.didFinishDecoding()
             }
         }
     }
@@ -113,6 +123,17 @@ class IndicatorViewModel: ObservableObject {
         blinkTimer?.invalidate()
         blinkTimer = nil
         isBlinking = false
+    }
+
+    @MainActor
+    func hideWithAnimation() async {
+        await withCheckedContinuation { continuation in
+            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                self.isVisible = false
+            } completion: {
+                continuation.resume()
+            }
+        }
     }
 }
 
@@ -188,6 +209,13 @@ struct IndicatorWindow: View {
                 .shadow(color: .black.opacity(0.15), radius: 10, x: 0, y: 4)
         }
         .frame(width: 200)
+        .scaleEffect(viewModel.isVisible ? 1 : 0.5)
+        .offset(y: viewModel.isVisible ? 0 : 20)
+        .opacity(viewModel.isVisible ? 1 : 0)
+        .animation(.spring(response: 0.3, dampingFraction: 0.7), value: viewModel.isVisible)
+        .onAppear {
+            viewModel.isVisible = true
+        }
     }
 }
 

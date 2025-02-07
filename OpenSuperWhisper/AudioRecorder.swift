@@ -1,6 +1,5 @@
 import AVFoundation
 import Foundation
-// import whisper
 
 class AudioRecorder: NSObject, ObservableObject {
     @Published var isRecording = false
