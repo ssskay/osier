@@ -7,18 +7,18 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		36EBC0227428844AC8411325 /* WhisperSamplingStrategy.swift in Resources */ = {isa = PBXBuildFile; fileRef = 36EBC6683FF3FCB407AC039A /* WhisperSamplingStrategy.swift */; };
-		36EBC1B35882771B03CCEE49 /* WhisperAlignmentHeadsPreset.swift in Resources */ = {isa = PBXBuildFile; fileRef = 36EBCAB0FC29A334904315BA /* WhisperAlignmentHeadsPreset.swift */; };
-		36EBC306D04008635328DAE1 /* WhisperGrammarElement.swift in Resources */ = {isa = PBXBuildFile; fileRef = 36EBCAA00AB5DEC1E4CC2EBA /* WhisperGrammarElement.swift */; };
-		36EBC6D475C8352BF3EA9EAF /* WhisperGrammarElementType.swift in Resources */ = {isa = PBXBuildFile; fileRef = 36EBCFBC57C80A15672C5791 /* WhisperGrammarElementType.swift */; };
-		36EBC8F7DA3F51E4D546612A /* WhisperAheads.swift in Resources */ = {isa = PBXBuildFile; fileRef = 36EBC741D6673D57337B1DBF /* WhisperAheads.swift */; };
-		36EBC907DA520E4D7D750096 /* Whis.swift in Resources */ = {isa = PBXBuildFile; fileRef = 36EBC58D48934E0C3BA8CB87 /* Whis.swift */; };
-		36EBCA42DBEDA791E9C785E5 /* WhisperFullParams.swift in Resources */ = {isa = PBXBuildFile; fileRef = 36EBC8DDC3282BC197C962AD /* WhisperFullParams.swift */; };
-		36EBCB7D2726BE5C80C0338A /* WhisperContextParams.swift in Resources */ = {isa = PBXBuildFile; fileRef = 36EBC6AF723738D1C4E1EA13 /* WhisperContextParams.swift */; };
-		36EBCC92099BD2EC03912BC9 /* WhisperTokenData.swift in Resources */ = {isa = PBXBuildFile; fileRef = 36EBC0C80664CACC7607572F /* WhisperTokenData.swift */; };
-		36EBCD229289171650A4E267 /* WhisperAhead.swift in Resources */ = {isa = PBXBuildFile; fileRef = 36EBCFCB9B6EDF4782439B88 /* WhisperAhead.swift */; };
-		36EBCD57CC6B8E2D3FC51EF5 /* WhisperTimings.swift in Resources */ = {isa = PBXBuildFile; fileRef = 36EBCA00779B228F345D6A94 /* WhisperTimings.swift */; };
-		36EBCE4EA0197EA30ECFA1F7 /* WhisperModelLoader.swift in Resources */ = {isa = PBXBuildFile; fileRef = 36EBC0C8929E516C36FC3899 /* WhisperModelLoader.swift */; };
+		36EBC0227428844AC8411325 /* WhisperSamplingStrategy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 36EBC6683FF3FCB407AC039A /* WhisperSamplingStrategy.swift */; };
+		36EBC1B35882771B03CCEE49 /* WhisperAlignmentHeadsPreset.swift in Sources */ = {isa = PBXBuildFile; fileRef = 36EBCAB0FC29A334904315BA /* WhisperAlignmentHeadsPreset.swift */; };
+		36EBC306D04008635328DAE1 /* WhisperGrammarElement.swift in Sources */ = {isa = PBXBuildFile; fileRef = 36EBCAA00AB5DEC1E4CC2EBA /* WhisperGrammarElement.swift */; };
+		36EBC6D475C8352BF3EA9EAF /* WhisperGrammarElementType.swift in Sources */ = {isa = PBXBuildFile; fileRef = 36EBCFBC57C80A15672C5791 /* WhisperGrammarElementType.swift */; };
+		36EBC8F7DA3F51E4D546612A /* WhisperAheads.swift in Sources */ = {isa = PBXBuildFile; fileRef = 36EBC741D6673D57337B1DBF /* WhisperAheads.swift */; };
+		36EBC907DA520E4D7D750096 /* Whis.swift in Sources */ = {isa = PBXBuildFile; fileRef = 36EBC58D48934E0C3BA8CB87 /* Whis.swift */; };
+		36EBCA42DBEDA791E9C785E5 /* WhisperFullParams.swift in Sources */ = {isa = PBXBuildFile; fileRef = 36EBC8DDC3282BC197C962AD /* WhisperFullParams.swift */; };
+		36EBCB7D2726BE5C80C0338A /* WhisperContextParams.swift in Sources */ = {isa = PBXBuildFile; fileRef = 36EBC6AF723738D1C4E1EA13 /* WhisperContextParams.swift */; };
+		36EBCC92099BD2EC03912BC9 /* WhisperTokenData.swift in Sources */ = {isa = PBXBuildFile; fileRef = 36EBC0C80664CACC7607572F /* WhisperTokenData.swift */; };
+		36EBCD229289171650A4E267 /* WhisperAhead.swift in Sources */ = {isa = PBXBuildFile; fileRef = 36EBCFCB9B6EDF4782439B88 /* WhisperAhead.swift */; };
+		36EBCD57CC6B8E2D3FC51EF5 /* WhisperTimings.swift in Sources */ = {isa = PBXBuildFile; fileRef = 36EBCA00779B228F345D6A94 /* WhisperTimings.swift */; };
+		36EBCE4EA0197EA30ECFA1F7 /* WhisperModelLoader.swift in Sources */ = {isa = PBXBuildFile; fileRef = 36EBC0C8929E516C36FC3899 /* WhisperModelLoader.swift */; };
 		CE84DF682D55762F00C54EA6 /* libwhisper.a in Frameworks */ = {isa = PBXBuildFile; fileRef = CE84DF672D55762200C54EA6 /* libwhisper.a */; };
 		CE84DF692D55762F00C54EA6 /* libggml.a in Frameworks */ = {isa = PBXBuildFile; fileRef = CE84DF632D55762200C54EA6 /* libggml.a */; };
 		CE84DF6A2D55762F00C54EA6 /* libggml-metal.a in Frameworks */ = {isa = PBXBuildFile; fileRef = CE84DF652D55762200C54EA6 /* libggml-metal.a */; };
@@ -439,18 +439,6 @@
 			files = (
 				CE84DF7A2D5578BE00C54EA6 /* jfk.wav in Resources */,
 				CE84DF782D55789800C54EA6 /* ggml-tiny.en.bin in Resources */,
-				36EBC1B35882771B03CCEE49 /* WhisperAlignmentHeadsPreset.swift in Resources */,
-				36EBC6D475C8352BF3EA9EAF /* WhisperGrammarElementType.swift in Resources */,
-				36EBC0227428844AC8411325 /* WhisperSamplingStrategy.swift in Resources */,
-				36EBCD229289171650A4E267 /* WhisperAhead.swift in Resources */,
-				36EBC8F7DA3F51E4D546612A /* WhisperAheads.swift in Resources */,
-				36EBCB7D2726BE5C80C0338A /* WhisperContextParams.swift in Resources */,
-				36EBCC92099BD2EC03912BC9 /* WhisperTokenData.swift in Resources */,
-				36EBCE4EA0197EA30ECFA1F7 /* WhisperModelLoader.swift in Resources */,
-				36EBC306D04008635328DAE1 /* WhisperGrammarElement.swift in Resources */,
-				36EBCA42DBEDA791E9C785E5 /* WhisperFullParams.swift in Resources */,
-				36EBCD57CC6B8E2D3FC51EF5 /* WhisperTimings.swift in Resources */,
-				36EBC907DA520E4D7D750096 /* Whis.swift in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -475,6 +463,18 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				36EBC1B35882771B03CCEE49 /* WhisperAlignmentHeadsPreset.swift in Sources */,
+				36EBC6D475C8352BF3EA9EAF /* WhisperGrammarElementType.swift in Sources */,
+				36EBC0227428844AC8411325 /* WhisperSamplingStrategy.swift in Sources */,
+				36EBCD229289171650A4E267 /* WhisperAhead.swift in Sources */,
+				36EBC8F7DA3F51E4D546612A /* WhisperAheads.swift in Sources */,
+				36EBCB7D2726BE5C80C0338A /* WhisperContextParams.swift in Sources */,
+				36EBCC92099BD2EC03912BC9 /* WhisperTokenData.swift in Sources */,
+				36EBCE4EA0197EA30ECFA1F7 /* WhisperModelLoader.swift in Sources */,
+				36EBC306D04008635328DAE1 /* WhisperGrammarElement.swift in Sources */,
+				36EBCA42DBEDA791E9C785E5 /* WhisperFullParams.swift in Sources */,
+				36EBCD57CC6B8E2D3FC51EF5 /* WhisperTimings.swift in Sources */,
+				36EBC907DA520E4D7D750096 /* Whis.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

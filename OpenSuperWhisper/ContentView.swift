@@ -12,6 +12,7 @@ struct ContentView: View {
     @StateObject private var audioRecorder = AudioRecorder()
     @StateObject private var settings = Settings()
     @StateObject private var permissionsManager = PermissionsManager()
+    @StateObject private var transcriptionService = TranscriptionService()
     @State private var isSettingsPresented = false
     
     var body: some View {
@@ -25,6 +26,7 @@ struct ContentView: View {
                             RecordingRow(url: recording, audioRecorder: audioRecorder, settings: settings)
                         }
                     }
+                    .disabled(transcriptionService.isLoading)
                     
                     HStack {
                         Text("Recording Shortcut: \(settings.recordingShortcut.description)")
@@ -40,21 +42,57 @@ struct ContentView: View {
                         }
                     }
                     .padding()
+                    .disabled(transcriptionService.isLoading)
                     
-                    Button(action: {
-                        audioRecorder.startRecording()
-                    }) {
-                        Image(systemName: audioRecorder.isRecording ? "stop.circle.fill" : "record.circle")
-                            .font(.system(size: 64))
-                            .foregroundColor(audioRecorder.isRecording ? .red : .accentColor)
+                    VStack(spacing: 16) {
+                        if audioRecorder.isRecording {
+                            Text(transcriptionService.currentSegment)
+                                .font(.body)
+                                .foregroundColor(.secondary)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .padding()
+                                .background(Color.gray.opacity(0.1))
+                                .cornerRadius(10)
+                                .animation(.easeInOut, value: transcriptionService.currentSegment)
+                        }
+                        
+                        Button(action: {
+                            if audioRecorder.isRecording {
+                                audioRecorder.stopRecording()
+                                transcriptionService.stopTranscribing()
+                            } else {
+                                audioRecorder.startRecording()
+                                transcriptionService.startRealTimeTranscription(settings: settings)
+                            }
+                        }) {
+                            Image(systemName: audioRecorder.isRecording ? "stop.circle.fill" : "record.circle")
+                                .font(.system(size: 64))
+                                .foregroundColor(audioRecorder.isRecording ? .red : .accentColor)
+                        }
+                        .disabled(transcriptionService.isLoading)
                     }
                     .padding()
                 }
             }
-            .navigationTitle("Audio Recorder")
-            .sheet(isPresented: $isSettingsPresented) {
-                SettingsView(settings: settings)
+            .overlay {
+                if transcriptionService.isLoading {
+                    ZStack {
+                        Color.black.opacity(0.3)
+                        VStack(spacing: 16) {
+                            ProgressView()
+                                .scaleEffect(1.5)
+                            Text("Loading Whisper Model...")
+                                .foregroundColor(.white)
+                                .font(.headline)
+                        }
+                    }
+                    .ignoresSafeArea()
+                }
             }
+            .navigationTitle("OpenSuperWhisper")
+        }
+        .sheet(isPresented: $isSettingsPresented) {
+            SettingsView(settings: settings)
         }
         .onAppear {
             if UserDefaults.standard.string(forKey: "selectedModelPath") == nil {
@@ -155,8 +193,8 @@ struct RecordingRow: View {
                 Button(action: {
                     Task {
                         do {
-                            _ = try await transcriptionService.transcribeAudio(url: url, settings: settings)
                             showTranscription = true
+                            _ = try await transcriptionService.transcribeAudio(url: url, settings: settings)
                         } catch {
                             print("Transcription failed: \(error)")
                         }
@@ -178,8 +216,20 @@ struct RecordingRow: View {
             }
             
             if transcriptionService.isTranscribing {
-                ProgressView("Transcribing...")
-                    .padding(.vertical, 4)
+                VStack(alignment: .leading, spacing: 8) {
+                    ProgressView("Transcribing...")
+                        .padding(.vertical, 4)
+                    
+                    if !transcriptionService.currentSegment.isEmpty {
+                        Text(transcriptionService.currentSegment)
+                            .font(.body)
+                            .foregroundColor(.secondary)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(8)
+                            .background(Color.gray.opacity(0.1))
+                            .cornerRadius(8)
+                    }
+                }
             }
             
             if !transcriptionService.transcribedText.isEmpty {
@@ -187,6 +237,8 @@ struct RecordingRow: View {
             }
         }
         .padding(.vertical, 4)
+        .animation(.easeInOut, value: transcriptionService.isTranscribing)
+        .animation(.easeInOut, value: transcriptionService.currentSegment)
     }
 }
 

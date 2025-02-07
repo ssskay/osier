@@ -23,6 +23,7 @@ public struct WhisperFullParams {
     public var tholdPtsum: Float = 0.01
     public var maxLen: Int32 = 0
     public var splitOnWord: Bool = false
+    public var print_realtime: Bool = false
     public var maxTokens: Int32 = 0
     public var debugMode: Bool = false
     public var audioCtx: Int32 = 0
@@ -81,6 +82,7 @@ public struct WhisperFullParams {
         cParams.thold_ptsum = tholdPtsum
         cParams.max_len = maxLen
         cParams.split_on_word = splitOnWord
+        cParams.print_realtime = print_realtime
         cParams.max_tokens = maxTokens
         cParams.debug_mode = debugMode
         cParams.audio_ctx = audioCtx
@@ -121,26 +123,25 @@ public struct WhisperFullParams {
         cParams.beam_search.beam_size = beamSearchBeamSize
         cParams.beam_search.patience = beamSearchPatience
 
-        cParams.new_segment_callback = newSegmentCallback
-        cParams.new_segment_callback_user_data = newSegmentCallbackUserData
+        if let callback = newSegmentCallback {
+            cParams.new_segment_callback = callback
+            cParams.new_segment_callback_user_data = newSegmentCallbackUserData
+        }
 
-        cParams.progress_callback = progressCallback
-        cParams.progress_callback_user_data = progressCallbackUserData
+        if let callback = progressCallback {
+            cParams.progress_callback = callback
+            cParams.progress_callback_user_data = progressCallbackUserData
+        }
 
-        cParams.encoder_begin_callback = encoderBeginCallback
-        cParams.encoder_begin_callback_user_data = encoderBeginCallbackUserData
+        if let callback = encoderBeginCallback {
+            cParams.encoder_begin_callback = callback
+            cParams.encoder_begin_callback_user_data = encoderBeginCallbackUserData
+        }
 
-//        if let abortCallback = abortCallback {
-//            let wrappedCallback: ggml_abort_callback = { userData in
-//                abortCallback(userData)
-//                return true
-//            }
-//            cParams.abort_callback = wrappedCallback
-//        }
-        cParams.abort_callback_user_data = abortCallbackUserData
-
-        cParams.logits_filter_callback = logitsFilterCallback
-        cParams.logits_filter_callback_user_data = logitsFilterCallbackUserData
+        if let callback = logitsFilterCallback {
+            cParams.logits_filter_callback = callback
+            cParams.logits_filter_callback_user_data = logitsFilterCallbackUserData
+        }
 
         if let grammarRules = grammarRules, !grammarRules.isEmpty {
             let count = grammarRules.count

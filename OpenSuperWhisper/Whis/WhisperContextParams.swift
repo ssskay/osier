@@ -24,7 +24,7 @@ public struct WhisperContextParams {
         cParams.dtw_token_timestamps = dtwTokenTimestamps
         cParams.dtw_aheads_preset = whisper_alignment_heads_preset(rawValue: UInt32(dtwAheadsPreset.rawValue))
         cParams.dtw_n_top = dtwNTop
-        var swiftAheads = dtwAheads
+        let swiftAheads = dtwAheads
         cParams.dtw_aheads = swiftAheads.toC() // Use the toC() method
         cParams.dtw_mem_size = dtwMemSize
         return cParams
