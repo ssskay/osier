@@ -31,6 +31,7 @@
 		CE84DF762D5577D200C54EA6 /* Accelerate.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = CE84DF752D5577D200C54EA6 /* Accelerate.framework */; };
 		CE84DF782D55789800C54EA6 /* ggml-tiny.en.bin in Resources */ = {isa = PBXBuildFile; fileRef = CE84DF772D55789800C54EA6 /* ggml-tiny.en.bin */; };
 		CE84DF7A2D5578BE00C54EA6 /* jfk.wav in Resources */ = {isa = PBXBuildFile; fileRef = CE84DF792D5578BE00C54EA6 /* jfk.wav */; };
+		CE84E17D2D56550B00C54EA6 /* KeyboardShortcuts in Frameworks */ = {isa = PBXBuildFile; productRef = CE84E17C2D56550B00C54EA6 /* KeyboardShortcuts */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -137,6 +138,7 @@
 				CE84DF722D55778000C54EA6 /* MetalKit.framework in Frameworks */,
 				CE84DF6E2D55777800C54EA6 /* libc++.tbd in Frameworks */,
 				CE84DF6C2D55762F00C54EA6 /* libggml-base.a in Frameworks */,
+				CE84E17D2D56550B00C54EA6 /* KeyboardShortcuts in Frameworks */,
 				CE84DF6A2D55762F00C54EA6 /* libggml-metal.a in Frameworks */,
 				CE84DF692D55762F00C54EA6 /* libggml.a in Frameworks */,
 				CE84DF682D55762F00C54EA6 /* libwhisper.a in Frameworks */,
@@ -335,6 +337,7 @@
 			);
 			name = OpenSuperWhisper;
 			packageProductDependencies = (
+				CE84E17C2D56550B00C54EA6 /* KeyboardShortcuts */,
 			);
 			productName = OpenSuperWhisper;
 			productReference = CE57B0282D52C7BB00929AF3 /* OpenSuperWhisper.app */;
@@ -419,6 +422,7 @@
 			mainGroup = CE57B01F2D52C7BB00929AF3;
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
+				CE84E17B2D56550B00C54EA6 /* XCRemoteSwiftPackageReference "KeyboardShortcuts" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = CE57B0292D52C7BB00929AF3 /* Products */;
@@ -842,6 +846,25 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		CE84E17B2D56550B00C54EA6 /* XCRemoteSwiftPackageReference "KeyboardShortcuts" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/sindresorhus/KeyboardShortcuts";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 2.2.4;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		CE84E17C2D56550B00C54EA6 /* KeyboardShortcuts */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = CE84E17B2D56550B00C54EA6 /* XCRemoteSwiftPackageReference "KeyboardShortcuts" */;
+			productName = KeyboardShortcuts;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = CE57B0202D52C7BB00929AF3 /* Project object */;
 }

@@ -2,6 +2,8 @@ import Foundation
 import AVFoundation
 
 class TranscriptionService: ObservableObject {
+    static let shared = TranscriptionService()
+    
     @Published private(set) var isTranscribing = false
     @Published private(set) var transcribedText = ""
     @Published private(set) var currentSegment = ""

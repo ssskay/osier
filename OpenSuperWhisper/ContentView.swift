@@ -12,7 +12,7 @@ struct ContentView: View {
     @StateObject private var audioRecorder = AudioRecorder()
     @StateObject private var settings = Settings()
     @StateObject private var permissionsManager = PermissionsManager()
-    @StateObject private var transcriptionService = TranscriptionService()
+    @StateObject private var transcriptionService = TranscriptionService.shared
     @State private var isSettingsPresented = false
     
     var body: some View {
@@ -29,9 +29,9 @@ struct ContentView: View {
                     .disabled(transcriptionService.isLoading)
                     
                     HStack {
-                        Text("Recording Shortcut: \(settings.recordingShortcut.description)")
-                            .foregroundColor(.secondary)
-                        
+//                        Text("Recording Shortcut: \(settings.recordingShortcut.description)")
+//                            .foregroundColor(.secondary)
+//
                         Spacer()
                         
                         Button(action: {
@@ -57,6 +57,9 @@ struct ContentView: View {
                         }
                         
                         Button(action: {
+                            let viewModel = IndicatorWindowManager.shared.show()
+                            viewModel.startRecording()
+
                             if audioRecorder.isRecording {
                                 audioRecorder.stopRecording()
                                 transcriptionService.stopTranscribing()
@@ -173,7 +176,7 @@ struct RecordingRow: View {
     let url: URL
     let audioRecorder: AudioRecorder
     let settings: Settings
-    @StateObject private var transcriptionService = TranscriptionService()
+    @StateObject private var transcriptionService = TranscriptionService.shared
     @State private var showTranscription = false
     
     var body: some View {
