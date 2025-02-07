@@ -1,6 +1,6 @@
 # Instructions
 
-use xtcpretty for xcode build output.
+use xcpretty for xcode build output.
 
 build the project with xcodebuild after you make changes to the project.
 
