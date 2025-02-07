@@ -8,7 +8,6 @@
 import AVFoundation
 import SwiftUI
 
-
 struct ContentView: View {
     @StateObject private var audioRecorder = AudioRecorder()
     @StateObject private var settings = Settings()
@@ -23,7 +22,7 @@ struct ContentView: View {
                 } else {
                     List {
                         ForEach(audioRecorder.recordings, id: \.self) { recording in
-                            RecordingRow(url: recording, audioRecorder: audioRecorder)
+                            RecordingRow(url: recording, audioRecorder: audioRecorder, settings: settings)
                         }
                     }
                     
@@ -58,8 +57,11 @@ struct ContentView: View {
             }
         }
         .onAppear {
-            settings.onShortcutTriggered = {
-                audioRecorder.startRecording()
+            if UserDefaults.standard.string(forKey: "selectedModelPath") == nil {
+                // Set default model on first launch
+                if let defaultModel = WhisperModelManager.shared.getAvailableModels().first {
+                    UserDefaults.standard.set(defaultModel.path, forKey: "selectedModelPath")
+                }
             }
         }
     }
@@ -132,80 +134,143 @@ struct PermissionRow: View {
 struct RecordingRow: View {
     let url: URL
     let audioRecorder: AudioRecorder
+    let settings: Settings
+    @State private var transcribedText: String = ""
+    @State private var isTranscribing = false
+    @State private var showTranscription = false
     
     var body: some View {
-        HStack {
-            Text(url.lastPathComponent)
-            
-            Spacer()
-            
-            Button(action: {
-                audioRecorder.playRecording(url: url)
-            }) {
-                Image(systemName: "play.circle")
-                    .font(.title2)
+        VStack(alignment: .leading) {
+            HStack {
+                Text(url.lastPathComponent)
+                
+                Spacer()
+                
+                Button(action: {
+                    audioRecorder.playRecording(url: url)
+                }) {
+                    Image(systemName: "play.circle")
+                        .font(.title2)
+                }
+                
+                Button(action: {
+                    transcribeAudio()
+                }) {
+                    Image(systemName: "waveform")
+                        .font(.title2)
+                        .foregroundColor(.blue)
+                }
+                .disabled(isTranscribing)
+                
+                Button(action: {
+                    audioRecorder.deleteRecording(url: url)
+                }) {
+                    Image(systemName: "trash")
+                        .font(.title2)
+                        .foregroundColor(.red)
+                }
             }
             
-            Button(action: {
-                audioRecorder.deleteRecording(url: url)
-            }) {
-                Image(systemName: "trash")
-                    .font(.title2)
-                    .foregroundColor(.red)
+            if isTranscribing {
+                ProgressView("Transcribing...")
+                    .padding(.vertical, 4)
+            }
+            
+            if !transcribedText.isEmpty {
+                TranscriptionView(transcribedText: transcribedText, isExpanded: $showTranscription)
             }
         }
         .padding(.vertical, 4)
     }
+    
+    private func transcribeAudio() {
+        isTranscribing = true
+        
+        guard let modelPath = UserDefaults.standard.string(forKey: "selectedModelPath"),
+              let context = WhisperContext(modelURL: URL(fileURLWithPath: modelPath))
+        else {
+            print("Failed to initialize WhisperContext")
+            isTranscribing = false
+            return
+        }
+        
+        DispatchQueue.global(qos: .userInitiated).async {
+            guard let samples = WhisperContext.convertAudioFileToPCM(fileURL: url) else {
+                print("Failed to convert audio to PCM")
+                DispatchQueue.main.async {
+                    isTranscribing = false
+                }
+                return
+            }
+            
+            var params = whisper_full_default_params(WHISPER_SAMPLING_GREEDY)
+            params.print_realtime = false
+            params.print_progress = false
+            params.single_segment = false
+            params.no_timestamps = !settings.viewModel.showTimestamps
+            params.suppress_blank = settings.viewModel.suppressBlankAudio
+            params.translate = settings.viewModel.translateToEnglish
+            
+            // Set language
+            if let languageStr = strdup(settings.viewModel.selectedLanguage) {
+                params.language = UnsafePointer(languageStr)
+                
+                if let text = context.processAudio(samples: samples, params: params) {
+                    free(languageStr)
+                    DispatchQueue.main.async {
+                        let cleanedText = text
+                            .replacingOccurrences(of: "[MUSIC]", with: "")
+                            .replacingOccurrences(of: "[BLANK_AUDIO]", with: "")
+                            .trimmingCharacters(in: .whitespacesAndNewlines)
+                        
+                        transcribedText = cleanedText.isEmpty ? "No speech detected in the audio" : cleanedText
+                        isTranscribing = false
+                        showTranscription = true
+                    }
+                } else {
+                    free(languageStr)
+                    DispatchQueue.main.async {
+                        isTranscribing = false
+                    }
+                }
+            } else {
+                print("Failed to allocate memory for language string")
+                DispatchQueue.main.async {
+                    isTranscribing = false
+                }
+            }
+        }
+    }
 }
 
-struct SettingsView: View {
-    @ObservedObject var settings: Settings
-    @Environment(\.presentationMode) var presentationMode
-    @State private var isRecordingNewShortcut = false
+struct TranscriptionView: View {
+    let transcribedText: String
+    @Binding var isExpanded: Bool
     
     var body: some View {
-        NavigationView {
-            Form {
-                Section("Recording Shortcut") {
-                    HStack {
-                        Text(settings.recordingShortcut.description)
-                            .font(.title2)
-                        
-                        Spacer()
-                        
-                        Button(isRecordingNewShortcut ? "Press any key..." : "Change") {
-                            isRecordingNewShortcut.toggle()
-                        }
-                        .buttonStyle(.borderedProminent)
-                    }
+        VStack(alignment: .leading) {
+            HStack {
+                Text("Transcription")
+                    .font(.headline)
+                Spacer()
+                Button(action: { isExpanded.toggle() }) {
+                    Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
                 }
             }
-            .padding()
-            .frame(minWidth: 300, minHeight: 200)
-            .navigationTitle("Settings")
-            .toolbar {
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Done") {
-                        presentationMode.wrappedValue.dismiss()
-                    }
+            
+            if isExpanded {
+                ScrollView {
+                    Text(transcribedText)
+                        .font(.body)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(8)
+                        .background(Color.gray.opacity(0.1))
+                        .cornerRadius(8)
                 }
+                .frame(maxHeight: 200)
             }
         }
-        .onAppear {
-            NSEvent.addLocalMonitorForEvents(matching: .keyDown) { event in
-                if isRecordingNewShortcut {
-                    let shortcut = Settings.KeyboardShortcut(
-                        keyCode: Int(event.keyCode),
-                        modifiers: Int(event.modifierFlags.rawValue)
-                    )
-                    settings.recordingShortcut = shortcut
-                    settings.saveSettings()
-                    isRecordingNewShortcut = false
-                    return nil
-                }
-                return event
-            }
-        }
+        .padding(.vertical, 4)
     }
 }
 

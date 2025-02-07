@@ -16,13 +16,13 @@ public class WhisperContext {
     /// Initializes a new WhisperContext from a model file.
     ///
     /// - Parameters:
-    ///   - path: The path to the Whisper model file.
+    ///   - modelURL: The URL to the Whisper model file.
     ///   - useGPU: Whether to use GPU if available (default: false)
     /// - Returns: A new `WhisperContext` instance, or `nil` if initialization fails.
-    public init?(path: String, useGPU: Bool = false) {
+    public init?(modelURL: URL, useGPU: Bool = false) {
         var cparams = whisper_context_default_params()
         cparams.use_gpu = useGPU
-        ctx = whisper_init_from_file_with_params(path, cparams)
+        ctx = whisper_init_from_file_with_params(modelURL.path, cparams)
         if ctx == nil { return nil }
         state = whisper_init_state(ctx)
         if state == nil {
@@ -55,23 +55,22 @@ public class WhisperContext {
     ///   - params: A `WhisperFullParams` struct configuring the transcription process.
     /// - Returns: The transcribed text as a single string, or `nil` if processing fails.
     public func processAudio(samples: [Float], params: whisper_full_params) -> String? {
-        let processingParams = params
-        let result = whisper_full_with_state(ctx, state, processingParams, samples, Int32(samples.count))
-
+        let result = whisper_full_with_state(ctx, state, params, samples, Int32(samples.count))
+        
         guard result == 0 else {
             print("Failed to process audio")
             return nil
         }
-
+        
         let nSegments = whisper_full_n_segments_from_state(state)
         var transcribedText = ""
-
+        
         for i in 0..<nSegments {
             if let text = whisper_full_get_segment_text_from_state(state, i) {
                 transcribedText += String(cString: text)
             }
         }
-
+        
         return transcribedText
     }
 
@@ -144,28 +143,28 @@ public class WhisperContext {
     /// - Returns: PCM samples
     public static func convertAudioFileToPCM(fileURL: URL) -> [Float]? {
         let fileManager = FileManager.default
-
+        
         // Check if the file exists
         guard fileManager.fileExists(atPath: fileURL.path) else {
             print("Error: File does not exist at \(fileURL.path)")
             return nil
         }
-
+        
         // Check if the file is readable
         guard fileManager.isReadableFile(atPath: fileURL.path) else {
             print("Error: File is not readable at \(fileURL.path)")
             return nil
         }
-
+        
         do {
             let data = try Data(contentsOf: fileURL)
-            // Assuming the audio data is in 16-bit PCM format
+            // Convert 16-bit PCM to float
             let samples = data.withUnsafeBytes {
                 Array($0.bindMemory(to: Int16.self)).map { Float($0) / Float(Int16.max) }
             }
             return samples
         } catch {
-            print("convertAudioFileToPCM Error loading file: \(error)")
+            print("Error loading audio file: \(error)")
             return nil
         }
     }
@@ -183,19 +182,19 @@ public extension WhisperContext {
 
     /// Example usage of the `WhisperContext` class.
     class func performExampleUsage() {
-        // Replace with your actual model path
-        guard let modelPath = Bundle.main.path(forResource: "ggml-tiny.en", ofType: "bin") else {
-            print("Model file not found.")
+        let models = WhisperModelManager.shared.getAvailableModels()
+        guard let modelURL = models.first else {
+            print("No models available")
             return
         }
 
-        guard let audioURL = Bundle.main.url(forResource: "jfk", withExtension: "wav") else { // Change "wav" to the actual extension
+        guard let audioURL = Bundle.main.url(forResource: "jfk", withExtension: "wav") else {
             print("Audio file not found")
             return
         }
 
         // Initialize WhisperContext
-        guard let context = WhisperContext(path: modelPath, useGPU: false) else {
+        guard let context = WhisperContext(modelURL: modelURL, useGPU: false) else {
             print("Failed to initialize WhisperContext.")
             return
         }
