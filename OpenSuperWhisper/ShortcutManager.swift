@@ -27,17 +27,23 @@ class ShortcutManager {
                 activeVm = nil
             } else {
                 let cursorPosition = self.getCurrentCursorPosition()
-                
-                if let carretPosition = self.getCaretRect() {
-                    let screenHeight = NSScreen.main?.frame.height ?? 0
-                    let carretPoint = NSPoint(x: carretPosition.origin.x, y: screenHeight - carretPosition.origin.y)
+
+                var indicatorPoint: NSPoint?
+
+                if let carretPosition = self.getCaretRect(), let screen = self.getFocusedWindowScreen() {
                     
-                    print("carretPoint: \(carretPoint)")
-                    let vm = IndicatorWindowManager.shared.show(nearPoint: carretPoint)
-                    vm.startRecording()
-                    
-                    activeVm = vm
+                    let screenHeight = screen.frame.height
+                    indicatorPoint = NSPoint(x: carretPosition.origin.x, y: screenHeight - carretPosition.origin.y)
+                } else {
+                    indicatorPoint = cursorPosition
                 }
+
+                let point = (indicatorPoint ?? self.getCurrentCursorPosition())
+                print("indicatorPoint: \(indicatorPoint)")
+                let vm = IndicatorWindowManager.shared.show(nearPoint: indicatorPoint)
+                vm.startRecording()
+                    
+                activeVm = vm
             }
         }
 
@@ -111,6 +117,48 @@ class ShortcutManager {
 
         return rect.toCGRect()
     }
+
+    func getFocusedWindowScreen() -> NSScreen? {
+        let systemWideElement = AXUIElementCreateSystemWide()
+        
+        var focusedWindow: AnyObject?
+        let result = AXUIElementCopyAttributeValue(systemWideElement,
+                                                   kAXFocusedWindowAttribute as CFString,
+                                                   &focusedWindow)
+        
+        guard result == .success else {
+            print("Не удалось получить сфокусированное окно")
+            return NSScreen.main
+        }
+        let windowElement = focusedWindow as! AXUIElement
+        
+        var windowFrameValue: CFTypeRef?
+        let frameResult = AXUIElementCopyAttributeValue(windowElement,
+                                                        
+                                                        "AXFrame" as CFString,
+                                                        &windowFrameValue)
+        
+        guard frameResult == .success else {
+            print("Не удалось получить фрейм окна")
+            return NSScreen.main
+        }
+        let frameValue = windowFrameValue as! AXValue
+        
+        var windowFrame = CGRect.zero
+        guard AXValueGetValue(frameValue, AXValueType.cgRect, &windowFrame) else {
+            print("Не удалось извлечь CGRect из AXValue")
+            return NSScreen.main
+        }
+        
+        for screen in NSScreen.screens {
+            if screen.frame.intersects(windowFrame) {
+                return screen
+            }
+        }
+        
+        return NSScreen.main
+    }
+
 }
 
 extension AXValue {
@@ -164,7 +212,7 @@ extension IndicatorWindowManager {
             
             // Try to position above cursor
             var x = point.x - windowFrame.width / 2
-            var y = point.y + 20 // 20 points above cursor
+            var y = point.y + 10 // 20 points above cursor
             
             // Adjust if out of screen bounds
             x = max(screenFrame.minX, min(x, screenFrame.maxX - windowFrame.width))
