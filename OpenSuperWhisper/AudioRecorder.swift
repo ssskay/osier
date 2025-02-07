@@ -12,9 +12,10 @@ class AudioRecorder: NSObject, ObservableObject {
     private var currentRecordingURL: URL? // To store the current recording's URL
 
     // MARK: - Singleton Instance
+
     static let shared = AudioRecorder() // The shared instance
     
-    private override init() { // Private initializer to prevent external instantiation
+    override private init() { // Private initializer to prevent external instantiation
         let applicationSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
         let appDirectory = applicationSupport.appendingPathComponent(Bundle.main.bundleIdentifier!)
         recordingsDirectory = appDirectory.appendingPathComponent("recordings")

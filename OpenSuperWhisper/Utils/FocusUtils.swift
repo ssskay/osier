@@ -1,4 +1,25 @@
- func getCaretRect() -> CGRect? {
+//
+//  FocusUtils.swift
+//  OpenSuperWhisper
+//
+//  Created by user on 07.02.2025.
+//
+
+import AppKit
+import ApplicationServices
+import Carbon
+import Cocoa
+import Foundation
+import KeyboardShortcuts
+import SwiftUI
+
+class FocusUtils {
+    
+    static func getCurrentCursorPosition() -> NSPoint {
+        return NSEvent.mouseLocation
+    }
+    
+    static func getCaretRect() -> CGRect? {
         // Получаем системный элемент для доступа ко всему UI
         let systemElement = AXUIElementCreateSystemWide()
         
@@ -46,11 +67,11 @@
         }
         
         let rect = caretBounds as! AXValue
-
+        
         return rect.toCGRect()
     }
-
-    func getFocusedWindowScreen() -> NSScreen? {
+    
+    static func getFocusedWindowScreen() -> NSScreen? {
         let systemWideElement = AXUIElementCreateSystemWide()
         
         var focusedWindow: AnyObject?
@@ -90,3 +111,25 @@
         
         return NSScreen.main
     }
+
+}
+
+private extension AXValue {
+    func toCGRect() -> CGRect? {
+        var rect = CGRect.zero
+        var type: AXValueType = AXValueGetType(self)
+        
+        guard type == .cgRect else {
+            print("AXValue is not of type CGRect, but \(type)") // More informative error
+            return nil
+        }
+        
+        let success = AXValueGetValue(self, .cgRect, &rect)
+        
+        guard success else {
+            print("Failed to get CGRect value from AXValue")
+            return nil
+        }
+        return rect
+    }
+}
