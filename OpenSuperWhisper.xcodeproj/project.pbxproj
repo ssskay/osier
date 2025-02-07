@@ -52,18 +52,6 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
-		36EBC0C80664CACC7607572F /* WhisperTokenData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = WhisperTokenData.swift; path = OpenSuperWhisper/Whis/WhisperTokenData.swift; sourceTree = "<group>"; };
-		36EBC0C8929E516C36FC3899 /* WhisperModelLoader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = WhisperModelLoader.swift; path = OpenSuperWhisper/Whis/WhisperModelLoader.swift; sourceTree = "<group>"; };
-		36EBC58D48934E0C3BA8CB87 /* Whis.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = Whis.swift; path = OpenSuperWhisper/Whis/Whis.swift; sourceTree = "<group>"; };
-		36EBC6683FF3FCB407AC039A /* WhisperSamplingStrategy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = WhisperSamplingStrategy.swift; path = OpenSuperWhisper/Whis/WhisperSamplingStrategy.swift; sourceTree = "<group>"; };
-		36EBC6AF723738D1C4E1EA13 /* WhisperContextParams.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = WhisperContextParams.swift; path = OpenSuperWhisper/Whis/WhisperContextParams.swift; sourceTree = "<group>"; };
-		36EBC741D6673D57337B1DBF /* WhisperAheads.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = WhisperAheads.swift; path = OpenSuperWhisper/Whis/WhisperAheads.swift; sourceTree = "<group>"; };
-		36EBC8DDC3282BC197C962AD /* WhisperFullParams.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = WhisperFullParams.swift; path = OpenSuperWhisper/Whis/WhisperFullParams.swift; sourceTree = "<group>"; };
-		36EBCA00779B228F345D6A94 /* WhisperTimings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = WhisperTimings.swift; path = OpenSuperWhisper/Whis/WhisperTimings.swift; sourceTree = "<group>"; };
-		36EBCAA00AB5DEC1E4CC2EBA /* WhisperGrammarElement.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = WhisperGrammarElement.swift; path = OpenSuperWhisper/Whis/WhisperGrammarElement.swift; sourceTree = "<group>"; };
-		36EBCAB0FC29A334904315BA /* WhisperAlignmentHeadsPreset.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = WhisperAlignmentHeadsPreset.swift; path = OpenSuperWhisper/Whis/WhisperAlignmentHeadsPreset.swift; sourceTree = "<group>"; };
-		36EBCFBC57C80A15672C5791 /* WhisperGrammarElementType.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = WhisperGrammarElementType.swift; path = OpenSuperWhisper/Whis/WhisperGrammarElementType.swift; sourceTree = "<group>"; };
-		36EBCFCB9B6EDF4782439B88 /* WhisperAhead.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = WhisperAhead.swift; path = OpenSuperWhisper/Whis/WhisperAhead.swift; sourceTree = "<group>"; };
 		CE57B0282D52C7BB00929AF3 /* OpenSuperWhisper.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = OpenSuperWhisper.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		CE57B0392D52C7BC00929AF3 /* OpenSuperWhisperTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = OpenSuperWhisperTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		CE57B0432D52C7BC00929AF3 /* OpenSuperWhisperUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = OpenSuperWhisperUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };

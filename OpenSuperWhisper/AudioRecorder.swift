@@ -46,6 +46,7 @@ class AudioRecorder: NSObject, ObservableObject {
     func startRecording() {
         if isRecording {
             stopRecording()
+            print("Wtf return")
             return
         }
         
@@ -53,7 +54,9 @@ class AudioRecorder: NSObject, ObservableObject {
         let filename = "\(timestamp).wav"
         let fileURL = recordingsDirectory.appendingPathComponent(filename)
         currentRecordingURL = fileURL // Save the URL of the current recording
-
+        
+        print("start record file to \(fileURL)")
+        
         let settings: [String: Any] = [
             AVFormatIDKey: Int(kAudioFormatLinearPCM),
             AVSampleRateKey: 16000.0,

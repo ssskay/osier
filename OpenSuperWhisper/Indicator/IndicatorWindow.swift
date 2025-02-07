@@ -165,8 +165,8 @@ struct IndicatorWindow: View {
     
     private var backgroundColor: Color {
         colorScheme == .dark
-            ? Color.black.opacity(0.7)
-            : Color.white.opacity(0.7)
+            ? Color.black.opacity(0.24)
+            : Color.white.opacity(0.24)
     }
     
     var body: some View {
@@ -198,13 +198,13 @@ struct IndicatorWindow: View {
             }
         }
         .padding(.horizontal, 24)
-        .padding(.vertical, 12)
+        .frame(height: 36)
         .background {
             RoundedRectangle(cornerRadius: 24)
                 .fill(backgroundColor)
                 .background {
                     RoundedRectangle(cornerRadius: 24)
-                        .fill(Material.ultraThinMaterial)
+                        .fill(Material.thinMaterial)
                 }
                 .shadow(color: .black.opacity(0.15), radius: 10, x: 0, y: 4)
         }
