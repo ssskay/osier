@@ -9,8 +9,12 @@ class AudioRecorder: NSObject, ObservableObject {
     private var audioRecorder: AVAudioRecorder?
     private var audioPlayer: AVAudioPlayer?
     private let recordingsDirectory: URL
+    private var currentRecordingURL: URL? // To store the current recording's URL
+
+    // MARK: - Singleton Instance
+    static let shared = AudioRecorder() // The shared instance
     
-    override init() {
+    private override init() { // Private initializer to prevent external instantiation
         let applicationSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
         let appDirectory = applicationSupport.appendingPathComponent(Bundle.main.bundleIdentifier!)
         recordingsDirectory = appDirectory.appendingPathComponent("recordings")
@@ -48,7 +52,8 @@ class AudioRecorder: NSObject, ObservableObject {
         let timestamp = Int(Date().timeIntervalSince1970)
         let filename = "\(timestamp).wav"
         let fileURL = recordingsDirectory.appendingPathComponent(filename)
-        
+        currentRecordingURL = fileURL // Save the URL of the current recording
+
         let settings: [String: Any] = [
             AVFormatIDKey: Int(kAudioFormatLinearPCM),
             AVSampleRateKey: 16000.0,
@@ -65,13 +70,17 @@ class AudioRecorder: NSObject, ObservableObject {
             isRecording = true
         } catch {
             print("Failed to start recording: \(error)")
+            currentRecordingURL = nil // Reset the URL if recording fails
         }
     }
     
-    func stopRecording() {
+    func stopRecording() -> URL? { // Changed to return URL?
         audioRecorder?.stop()
         isRecording = false
         loadRecordings()
+        let url = currentRecordingURL
+        currentRecordingURL = nil // Reset the URL
+        return url // Return the URL of the stopped recording
     }
     
     func playRecording(url: URL) {

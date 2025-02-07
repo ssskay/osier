@@ -1,5 +1,5 @@
-import SwiftUI
 import AppKit
+import SwiftUI
 
 class IndicatorWindowManager {
     static let shared = IndicatorWindowManager()
@@ -12,7 +12,8 @@ class IndicatorWindowManager {
     func show(nearPoint point: NSPoint? = nil) -> IndicatorViewModel {
         // Create new view model
         let newViewModel = IndicatorViewModel()
-        self.viewModel = newViewModel
+        newViewModel.delegate = self
+        viewModel = newViewModel
         
         if window == nil {
             // Create window if it doesn't exist
@@ -43,7 +44,7 @@ class IndicatorWindowManager {
             if let point = point {
                 // Position near cursor
                 x = point.x - windowFrame.width / 2
-                y = point.y + 20  // 20 points above cursor
+                y = point.y + 20 // 20 points above cursor
             } else {
                 // Default to top center of screen
                 x = screenFrame.midX - windowFrame.width / 2
@@ -65,8 +66,19 @@ class IndicatorWindowManager {
         return newViewModel
     }
     
-    func hide() {
+    func stopRecording() {
+        viewModel?.startDecoding()
+    }
+    
+    func stopForce() {
         window?.orderOut(nil)
         viewModel = nil
     }
-} 
+}
+
+extension IndicatorWindowManager: IndicatorViewDelegate {
+    
+    func didFinishDecoding() {
+        stopForce()
+    }
+}

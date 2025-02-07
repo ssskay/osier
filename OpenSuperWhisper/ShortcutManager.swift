@@ -23,7 +23,7 @@ class ShortcutManager {
             guard let self = self else { return }
             
             if let vm = activeVm {
-                IndicatorWindowManager.shared.hide()
+                IndicatorWindowManager.shared.stopRecording()
                 activeVm = nil
             } else {
                 let cursorPosition = self.getCurrentCursorPosition()
@@ -48,11 +48,18 @@ class ShortcutManager {
         }
 
         KeyboardShortcuts.onKeyUp(for: .escape) { [weak self] in
-            guard let self = self else { return }
-            
             if let vm = activeVm {
-                IndicatorWindowManager.shared.hide()
-                activeVm = nil
+                
+                if vm.isRecording {
+                    IndicatorWindowManager.shared.stopForce()
+                    activeVm = nil
+
+                } else {
+                    IndicatorWindowManager.shared.stopRecording()
+                    activeVm = nil
+
+                }
+                
             }
         }
     }

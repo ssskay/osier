@@ -1,3 +1,4 @@
+import Cocoa
 import SwiftUI
 
 enum RecordingState {
@@ -6,22 +7,97 @@ enum RecordingState {
     case decoding
 }
 
+@MainActor
+protocol IndicatorViewDelegate: AnyObject {
+    
+    func didFinishDecoding()
+}
+
 class IndicatorViewModel: ObservableObject {
     @Published var state: RecordingState = .idle
     @Published var isBlinking = false
+    @Published var recorder: AudioRecorder = .shared
     
+    var delegate: IndicatorViewDelegate?
     private var blinkTimer: Timer?
+    
+    var isRecording: Bool {
+        recorder.isRecording
+    }
     
     func startRecording() {
         state = .recording
         startBlinking()
+        recorder.startRecording()
     }
     
     func startDecoding() {
         state = .decoding
         stopBlinking()
+        
+        if let url = recorder.stopRecording() {
+            let transcription = TranscriptionService.shared
+            
+            Task { [weak self] in
+                
+                guard let self = self else { return }
+                
+                do {
+                    let text = try await transcription.transcribeAudio(url: url, settings: .shared)
+                    
+                    insertTextUsingPasteboard(text)
+                    
+                    print("Transcription result: \(text)")
+                } catch {
+                    print("Error transcribing audio: \(error)")
+                }
+                
+                await self.delegate?.didFinishDecoding()
+                
+            }
+        }
     }
     
+    func insertTextUsingPasteboard(_ text: String) {
+        // 1. Копируем текст в буфер обмена
+        let pasteboard = NSPasteboard.general
+        pasteboard.declareTypes([.string], owner: nil)
+        pasteboard.setString(text, forType: .string)
+        
+        // 2. Создаем источник событий
+        guard let source = CGEventSource(stateID: .combinedSessionState) else {
+            print("Не удалось создать источник событий")
+            return
+        }
+        
+        // Коды клавиш (в dec):
+        // - Command (левая) — 55
+        // - V — 9
+        let keyCodeCmd: CGKeyCode = 55
+        let keyCodeV: CGKeyCode = 9
+        
+        // Создаем события: нажатие Command, нажатие V, отпускание V, отпускание Command.
+        let cmdDown = CGEvent(keyboardEventSource: source, virtualKey: keyCodeCmd, keyDown: true)
+        
+        // При нажатии V нужно выставить флаг Command
+        let vDown = CGEvent(keyboardEventSource: source, virtualKey: keyCodeV, keyDown: true)
+        vDown?.flags = .maskCommand
+        
+        let vUp = CGEvent(keyboardEventSource: source, virtualKey: keyCodeV, keyDown: false)
+        vUp?.flags = .maskCommand
+        
+        let cmdUp = CGEvent(keyboardEventSource: source, virtualKey: keyCodeCmd, keyDown: false)
+        
+        // Определяем место отправки событий
+        let eventTapLocation = CGEventTapLocation.cghidEventTap
+        
+        // Отправляем события в систему
+        cmdDown?.post(tap: eventTapLocation)
+        vDown?.post(tap: eventTapLocation)
+        vUp?.post(tap: eventTapLocation)
+        cmdUp?.post(tap: eventTapLocation)
+    }
+
     func stop() {
         state = .idle
         stopBlinking()

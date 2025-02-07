@@ -9,8 +9,8 @@ import AVFoundation
 import SwiftUI
 
 struct ContentView: View {
-    @StateObject private var audioRecorder = AudioRecorder()
-    @StateObject private var settings = Settings()
+    @StateObject private var audioRecorder = AudioRecorder.shared
+    @StateObject private var settings = Settings.shared
     @StateObject private var permissionsManager = PermissionsManager()
     @StateObject private var transcriptionService = TranscriptionService.shared
     @State private var isSettingsPresented = false

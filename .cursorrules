@@ -16,7 +16,7 @@ do not touch header files.
 
 use xcpretty for xcode build output.
 
-build the project with xcodebuild after you make changes to the project.
+build the project with xcodebuild after you make changes to the project if requested.
 
 use the following command:
 ```shell

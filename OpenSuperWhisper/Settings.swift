@@ -134,7 +134,9 @@ class SettingsViewModel: ObservableObject {
 final class Settings: ObservableObject {
     @Published var viewModel: SettingsViewModel
     
-    init() {
+    static let shared = Settings()
+    
+    private init() {
         // Get the current shortcut from ShortcutManager
      
         self.viewModel = SettingsViewModel()
