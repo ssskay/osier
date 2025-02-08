@@ -1,6 +1,6 @@
 import Foundation
-import UniformTypeIdentifiers
 import SwiftUI
+import UniformTypeIdentifiers
 
 class FileDropHandler: ObservableObject {
     static let shared = FileDropHandler()
@@ -19,7 +19,7 @@ class FileDropHandler: ObservableObject {
                 let url = try await provider.loadItem(
                     forTypeIdentifier: UTType.audio.identifier) as? URL
                 
-                print("url: \(url)")
+                print("url: \(String(describing: url))")
                 
                 guard let url = url else {
                     print("Error loading item")
@@ -86,7 +86,7 @@ struct FileDropOverlay: ViewModifier {
                 }
             }
             .onDrop(of: [.audio], isTargeted: $handler.isDragging) { providers in
-                Task {
+                Task { @MainActor in
                     await handler.handleDrop(of: providers)
                 }
                 return true
@@ -98,4 +98,4 @@ extension View {
     func fileDropHandler() -> some View {
         modifier(FileDropOverlay())
     }
-} 
+}

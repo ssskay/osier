@@ -12,6 +12,7 @@ class AudioRecorder: NSObject, ObservableObject {
     private var currentRecordingURL: URL?
 
     // MARK: - Singleton Instance
+
     static let shared = AudioRecorder()
     
     override private init() {
@@ -33,7 +34,7 @@ class AudioRecorder: NSObject, ObservableObject {
     func startRecording() {
         if isRecording {
             print("stop recording while recording")
-            stopRecording()
+            _ = stopRecording()
             // return
         }
         
@@ -71,7 +72,8 @@ class AudioRecorder: NSObject, ObservableObject {
         // Check if recording duration is less than 1 second
         if let url = currentRecordingURL,
            let duration = try? AVAudioPlayer(contentsOf: url).duration,
-           duration < 1.0 {
+           duration < 1.0
+        {
             // Remove recordings shorter than 1 second
             try? FileManager.default.removeItem(at: url)
             currentRecordingURL = nil

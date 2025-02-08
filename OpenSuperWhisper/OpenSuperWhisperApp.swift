@@ -26,6 +26,10 @@ struct OpenSuperWhisperApp: App {
         // Request microphone access on app launch
         AVCaptureDevice.requestAccess(for: .audio) { _ in }
 
+//        if ProcessInfo.processInfo.environment["XCODE_RUNNING_FOR_PREVIEWS"] != nil {
+//            fatalError("LOL")
+//        }
+
         _ = ShortcutManager.shared
     }
 }
