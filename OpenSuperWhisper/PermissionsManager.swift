@@ -11,6 +11,8 @@ class PermissionsManager: ObservableObject {
     @Published var isMicrophonePermissionGranted = false
     @Published var isAccessibilityPermissionGranted = false
     
+    private var permissionCheckTimer: Timer?
+    
     init() {
         checkMicrophonePermission()
         checkAccessibilityPermission()
@@ -25,6 +27,25 @@ class PermissionsManager: ObservableObject {
         
         // Request accessibility permission on launch
         requestAccessibilityPermission()
+        
+        // Start continuous permission checking
+        startPermissionChecking()
+    }
+    
+    deinit {
+        stopPermissionChecking()
+    }
+    
+    private func startPermissionChecking() {
+        permissionCheckTimer = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: true) { [weak self] _ in
+            self?.checkMicrophonePermission()
+            self?.checkAccessibilityPermission()
+        }
+    }
+    
+    private func stopPermissionChecking() {
+        permissionCheckTimer?.invalidate()
+        permissionCheckTimer = nil
     }
     
     func checkMicrophonePermission() {

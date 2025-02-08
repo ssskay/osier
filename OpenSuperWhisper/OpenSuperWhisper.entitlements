@@ -8,5 +8,15 @@
 	<array>
 		<string>com.apple.systempreferences</string>
 	</array>
+	<key>com.apple.security.app-sandbox</key>
+	<false/>
+	<key>com.apple.security.accessibility</key>
+	<true/>
+	<key>com.apple.security.temporary-exception.accessibility</key>
+	<true/>
+	<key>com.apple.security.temporary-exception.accessibility.control</key>
+	<true/>
+	<key>com.apple.security.temporary-exception.accessibility.monitor</key>
+	<true/>
 </dict>
 </plist>

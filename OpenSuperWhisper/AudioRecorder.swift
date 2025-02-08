@@ -32,6 +32,7 @@ class AudioRecorder: NSObject, ObservableObject {
     
     func startRecording() {
         if isRecording {
+            print("stop recording while recording")
             stopRecording()
             return
         }
