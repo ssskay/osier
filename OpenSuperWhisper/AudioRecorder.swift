@@ -34,7 +34,7 @@ class AudioRecorder: NSObject, ObservableObject {
         if isRecording {
             print("stop recording while recording")
             stopRecording()
-            return
+            // return
         }
         
         let timestamp = Int(Date().timeIntervalSince1970)

@@ -61,6 +61,7 @@ struct ContentView: View {
                         LazyVStack(spacing: 8) {
                             ForEach(filteredRecordings) { recording in
                                 RecordingRow(recording: recording)
+                                    .transition(.scale.combined(with: .opacity))
                             }
                         }
                         .padding(.horizontal)
@@ -248,11 +249,21 @@ struct RecordingRow: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
+            TranscriptionView(
+                transcribedText: recording.transcription, isExpanded: $showTranscription
+            )
+            .padding(.horizontal, 4)
+            .padding(.top, 8)
+
+            Divider()
+                .padding(.horizontal, 12)
+                .padding(.vertical, 8)
+
             HStack(alignment: .center, spacing: 8) {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(recording.timestamp, style: .date)
                         .font(.subheadline)
-                        .foregroundColor(.primary)
+                        .foregroundColor(.secondary)
 
                     Text(recording.timestamp, style: .time)
                         .font(.caption)
@@ -262,56 +273,52 @@ struct RecordingRow: View {
                 Spacer()
 
                 HStack(spacing: 16) {
-                    Button(action: {
-                        if isPlaying {
-                            audioRecorder.stopPlaying()
-                        } else {
-                            audioRecorder.playRecording(url: recording.url)
+                    if isHovered || isPlaying {
+                        Button(action: {
+                            if isPlaying {
+                                audioRecorder.stopPlaying()
+                            } else {
+                                audioRecorder.playRecording(url: recording.url)
+                            }
+                        }) {
+                            Image(systemName: isPlaying ? "stop.circle.fill" : "play.circle.fill")
+                                .font(.system(size: 20))
+                                .foregroundColor(isPlaying ? .red : .accentColor)
+                                .contentTransition(.symbolEffect(.replace))
                         }
-                    }) {
-                        Image(systemName: isPlaying ? "stop.circle.fill" : "play.circle.fill")
-                            .font(.system(size: 20))
-                            .foregroundColor(isPlaying ? .red : .accentColor)
-                            .contentTransition(.symbolEffect(.replace))
-                    }
-                    .buttonStyle(.plain)
+                        .buttonStyle(.plain)
 
-                    Button(action: {
-                        NSPasteboard.general.clearContents()
-                        NSPasteboard.general.setString(recording.transcription, forType: .string)
-                    }) {
-                        Image(systemName: "doc.on.doc.fill")
-                            .font(.system(size: 18))
-                            .foregroundColor(.secondary)
-                    }
-                    .buttonStyle(.plain)
-                    .help("Copy entire text")
-
-                    Button(action: {
-                        if isPlaying {
-                            audioRecorder.stopPlaying()
+                        Button(action: {
+                            NSPasteboard.general.clearContents()
+                            NSPasteboard.general.setString(recording.transcription, forType: .string)
+                        }) {
+                            Image(systemName: "doc.on.doc.fill")
+                                .font(.system(size: 18))
+                                .foregroundColor(.secondary)
                         }
-                        recordingStore.deleteRecording(recording)
-                    }) {
-                        Image(systemName: "trash.fill")
-                            .font(.system(size: 18))
-                            .foregroundColor(.secondary)
+                        .buttonStyle(.plain)
+                        .help("Copy entire text")
+
+                        Button(action: {
+                            if isPlaying {
+                                audioRecorder.stopPlaying()
+                            }
+                            withAnimation(.easeInOut(duration: 0.3)) {
+                                recordingStore.deleteRecording(recording)
+                            }
+                        }) {
+                            Image(systemName: "trash.fill")
+                                .font(.system(size: 18))
+                                .foregroundColor(.secondary)
+                        }
+                        .buttonStyle(.plain)
                     }
-                    .buttonStyle(.plain)
                 }
-                .opacity(isHovered ? 1 : 0.7)
+                .transition(.opacity)
             }
             .padding(.horizontal, 12)
-            .padding(.vertical, 8)
+            .padding(.bottom, 8)
             .background(Color(NSColor.controlBackgroundColor))
-
-            Divider()
-                .padding(.horizontal, 12)
-
-            TranscriptionView(
-                transcribedText: recording.transcription, isExpanded: $showTranscription
-            )
-            .padding(.horizontal, 4)
         }
         .background(Color(NSColor.controlBackgroundColor))
         .cornerRadius(8)
@@ -321,6 +328,7 @@ struct RecordingRow: View {
             }
         }
         .padding(.vertical, 4)
+        .transition(.scale.combined(with: .opacity))
     }
 }
 
