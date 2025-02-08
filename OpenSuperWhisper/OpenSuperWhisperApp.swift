@@ -10,16 +10,24 @@ import SwiftUI
 
 @main
 struct OpenSuperWhisperApp: App {
+    @StateObject private var appState = AppState()
+
     var body: some Scene {
         WindowGroup {
-            ContentView()
-                .frame(minWidth: 400, minHeight: 500)
+            Group {
+                if !appState.hasCompletedOnboarding {
+                    OnboardingView()
+                } else {
+                    ContentView()
+                }
+            }
+            .frame(minWidth: 400, minHeight: 500)
+            .environmentObject(appState)
         }
         .windowStyle(.hiddenTitleBar)
         .commands {
             CommandGroup(replacing: .newItem) {}
         }
-
     }
 
     init() {
@@ -31,5 +39,17 @@ struct OpenSuperWhisperApp: App {
 //        }
 
         _ = ShortcutManager.shared
+    }
+}
+
+class AppState: ObservableObject {
+    @Published var hasCompletedOnboarding: Bool {
+        didSet {
+            AppPreferences.shared.hasCompletedOnboarding = hasCompletedOnboarding
+        }
+    }
+
+    init() {
+        self.hasCompletedOnboarding = false // AppPreferences.shared.hasCompletedOnboarding
     }
 }

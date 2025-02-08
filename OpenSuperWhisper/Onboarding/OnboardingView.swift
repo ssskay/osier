@@ -5,40 +5,77 @@
 //  Created by user on 08.02.2025.
 //
 
+import Foundation
 import SwiftUI
 
 class OnboardingViewModel: ObservableObject {
     @Published var selectedLanguage: String
-    @Published var selectedGGMLModel: URL? {
+    @Published var selectedModel: DownloadableModel? {
         didSet {
-            if let url = selectedGGMLModel {
-                setModelPath(url)
+            if let model = selectedModel, model.isDownloaded {
+                let modelPath = modelManager.modelsDirectory.appendingPathComponent(model.name).path
+                AppPreferences.shared.selectedModelPath = modelPath
             }
         }
     }
+    @Published var models: [DownloadableModel]
+    @Published var isDownloadingAny: Bool = false
 
-    @Published var availableModels: [URL] = []
+    private let modelManager = WhisperModelManager.shared
 
     init() {
         self.selectedLanguage = AppPreferences.shared.whisperLanguage
-        loadAvailableModels()
+        self.models = []
+        initializeModels()
     }
 
-    private func loadAvailableModels() {
-        // Load available models from a predefined directory or source
-        // This is a placeholder implementation
-        let modelsDirectory = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first?.appendingPathComponent("Models")
-        if let modelsDirectory = modelsDirectory {
-            do {
-                availableModels = try FileManager.default.contentsOfDirectory(at: modelsDirectory, includingPropertiesForKeys: nil)
-            } catch {
-                print("Error loading models: \(error)")
-            }
+    private func initializeModels() {
+        // Initialize models with their actual download status
+        models = availableModels.map { model in
+            var updatedModel = model
+            updatedModel.isDownloaded = modelManager.isModelDownloaded(name: model.name)
+            return updatedModel
         }
     }
 
-    func setModelPath(_ url: URL) {
-        AppPreferences.shared.selectedModelPath = url.path
+    func downloadSelectedModel() async throws {
+        guard let model = selectedModel, !model.isDownloaded else { return }
+        
+        guard !isDownloadingAny else { return }
+        isDownloadingAny = true
+
+        do {
+            // Find the index of the model we're downloading
+            guard let modelIndex = models.firstIndex(where: { $0.name == model.name }) else {
+                isDownloadingAny = false
+                return
+            }
+
+            // Start the download with progress updates
+            try await modelManager.downloadModel(url: model.url, name: model.name) { [weak self] progress in
+
+                print("Downloading model: \(model.name) with progress: \(progress)")
+
+                DispatchQueue.main.async {
+                    self?.models[modelIndex].downloadProgress = progress
+                    if progress >= 1.0 {
+                        self?.models[modelIndex].isDownloaded = true
+                        self?.isDownloadingAny = false
+                        // Update the model path after successful download
+                        if let modelPath = self?.modelManager.modelsDirectory.appendingPathComponent(model.name).path {
+                            AppPreferences.shared.selectedModelPath = modelPath
+                        }
+                    }
+                }
+            }
+        } catch {
+            print("Failed to download model: \(error)")
+            if let modelIndex = models.firstIndex(where: { $0.name == model.name }) {
+                models[modelIndex].downloadProgress = 0
+            }
+            isDownloadingAny = false
+            throw error
+        }
     }
 
     func setLanguage(_ language: String) {
@@ -49,31 +86,97 @@ class OnboardingViewModel: ObservableObject {
 
 struct OnboardingView: View {
     @StateObject private var viewModel = OnboardingViewModel()
-    @Binding var isPresented: Bool
-
+    @EnvironmentObject private var appState: AppState
+    @State private var isDownloading = false
+    @State private var showError = false
+    @State private var errorMessage = ""
+    
     var body: some View {
+        ZStack {
+            VStack(alignment: .leading) {
+                Text("Welcome to OpenSuperWhisper!")
+                    .font(.title)
+                    .padding()
 
-        VStack {
-            Text("Welcome to OpenSuperWhisper!")
-                .font(.title)
+                // Language selection
+                VStack(alignment: .leading) {
+                    Text("Choose speech language")
+                        .font(.headline)
+                    Picker("", selection: $viewModel.selectedLanguage) {
+                        ForEach(LanguageUtil.availableLanguages, id: \.self) { code in
+                            Text(LanguageUtil.languageNames[code] ?? code)
+                                .tag(code)
+                        }
+                    }
+                    .frame(width: 200)
+                }
                 .padding()
 
-            // drop down to select language
-            Picker("Select Language", selection: $viewModel.selectedLanguage) {
-                ForEach(["English", "German", "French"], id: \.self) { language in
-                    Text(language)
+                VStack(alignment: .leading) {
+                    Text("Choose Model")
+                        .font(.headline)
+
+                    Text("The model is designed to transcribe audio into text. It is a powerful tool that can be used to transcribe audio into text.")
+                        .font(.subheadline)
+                        .padding(.top, 8)
+                }
+                .padding()
+
+                ModelListView(viewModel: viewModel)
+                    .frame(width: 410, height: .infinity)
+
+                // Next button at right bottom
+                HStack {
+                    Spacer()
+                    Button(action: {
+                        handleNextButtonTap()
+                    }) {
+                        Text("Next")
+                    }
+                    .padding()
+                    .disabled(viewModel.selectedModel == nil || viewModel.isDownloadingAny)
                 }
             }
-            .frame(width: 200)
+            .padding()
+            .frame(width: 450, height: 650)
+            .alert("Download Error", isPresented: $showError) {
+                Button("OK", role: .cancel) { }
+            } message: {
+                Text(errorMessage)
+            }
         }
-        Text(/*@START_MENU_TOKEN@*/"Hello, World!"/*@END_MENU_TOKEN@*/)
+    }
+
+    private func handleNextButtonTap() {
+        guard let selectedModel = viewModel.selectedModel else { return }
+        
+        if selectedModel.isDownloaded {
+            // If model is already downloaded, proceed immediately
+            appState.hasCompletedOnboarding = true
+        } else {
+            // If model needs to be downloaded, start download
+            Task {
+                do {
+                    try await viewModel.downloadSelectedModel()
+                    // After successful download, proceed to the main app
+                    await MainActor.run {
+                        appState.hasCompletedOnboarding = true
+                    }
+                } catch {
+                    await MainActor.run {
+                        errorMessage = error.localizedDescription
+                        showError = true
+                    }
+                }
+            }
+        }
     }
 }
 
 struct DownloadableModel: Identifiable {
     let id = UUID() // Add an ID for Identifiable conformance
     let name: String
-    let isDownloaded: Bool
+    var isDownloaded: Bool
     let url: URL
     let size: Int
     var speedRate: Int
@@ -135,7 +238,7 @@ let availableModels = [
 // UI for the model
 struct DownloadableItemView: View {
     @Binding var model: DownloadableModel
-    @Binding var isDownloadingAny: Bool
+    @EnvironmentObject var viewModel: OnboardingViewModel
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
@@ -150,21 +253,17 @@ struct DownloadableItemView: View {
 
                         VStack {
                             Text("Accuracy")
-
                             ProgressView(value: Double(model.accuracyRate), total: 100)
                                 .progressViewStyle(LinearProgressViewStyle())
                                 .frame(width: 64, height: 4)
-
                         }
 
                         VStack {
                             Text("Speed")
-
                             ProgressView(value: Double(model.speedRate), total: 100)
                                 .progressViewStyle(LinearProgressViewStyle())
                                 .frame(width: 64, height: 4)
                         }
-
                     }
 
                     Text(model.sizeString)
@@ -174,97 +273,53 @@ struct DownloadableItemView: View {
 
                 Spacer()
 
-                // Download status/button
+                // Download status indicator
                 if model.isDownloaded {
                     Image(systemName: "checkmark.circle.fill")
                         .foregroundColor(.green)
                 } else if model.downloadProgress > 0 && model.downloadProgress < 1 {
-                    ProgressView(value: model.downloadProgress)
-                        .progressViewStyle(CircularProgressViewStyle())
-                        .frame(width: 30, height: 30)
-                } else {
-                    Button(action: {
-                        guard !isDownloadingAny else { return }
-                        startFakeDownload()
-                    }) {
-                        Image(systemName: "arrow.down.circle")
-                            .foregroundColor(isDownloadingAny ? .gray : .blue)
+                    VStack(spacing: 4) {
+                        ProgressView(value: model.downloadProgress)
+                            .progressViewStyle(CircularProgressViewStyle())
+                            .frame(width: 30, height: 30)
                     }
-                    .disabled(isDownloadingAny)
+                } else {
+                    Image(systemName: "arrow.down.circle")
+                        .foregroundColor(.gray)
+                        .imageScale(.large)
                 }
             }
             .padding(16)
         }
-        .frame(width: 350)
+        .frame(width: 400)
         .padding(.vertical, 8)
-        .border(model.isSelected ? Color.green : Color.clear, width: 2)
-        .cornerRadius(8)
+        .background(model.name == viewModel.selectedModel?.name ? Color.gray.opacity(0.3) : Color.clear)
+        .cornerRadius(16)
+        .contentShape(Rectangle())
         .onTapGesture {
-            model.isSelected.toggle()
-        }
-    }
-
-    func startFakeDownload() {
-        isDownloadingAny = true
-        var progress = 0.0
-        Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { timer in
-            progress += 0.02
-            model.updateDownloadProgress(progress: progress)
-
-            if progress >= 1.0 {
-                timer.invalidate()
-                model.updateDownloadProgress(progress: 1.0)
-                model.speedRate = Int.random(in: 80...100)
-                model.accuracyRate = Int.random(in: 80...100)
-                isDownloadingAny = false
-            }
+            viewModel.selectedModel = model
         }
     }
 }
 
 struct ModelListView: View {
-    @State var availableModels: [DownloadableModel] = [
-        DownloadableModel(
-            name: "Turbo V3 low",
-            isDownloaded: false,
-            url: URL(string: "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-large-v3-turbo-q5_0.bin?download=true")!,
-            size: 574,
-            speedRate: 100,
-            accuracyRate: 100
-        ),
-        DownloadableModel(
-            name: "Turbo V3 medium",
-            isDownloaded: false,
-            url: URL(string: "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-large-v3-turbo-q8_0.bin?download=true")!,
-            size: 874,
-            speedRate: 100,
-            accuracyRate: 100
-        ),
-        DownloadableModel(
-            name: "Turbo V3 high",
-            isDownloaded: false,
-            url: URL(string: "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-large-v3-turbo.bin?download=true")!,
-            size: 1624,
-            speedRate: 100,
-            accuracyRate: 100
-        )
-    ]
-    @State private var isDownloadingAny: Bool = false
+    @ObservedObject var viewModel: OnboardingViewModel
 
     var body: some View {
         List {
-            ForEach($availableModels) { $model in
-                DownloadableItemView(model: $model, isDownloadingAny: $isDownloadingAny)
+            ForEach($viewModel.models) { $model in
+                DownloadableItemView(model: $model)
+                    .environmentObject(viewModel)
             }
         }
-        .listStyle(.plain)
+        .listStyle(.bordered)
     }
 }
 
 #Preview {
-    OnboardingView(isPresented: .constant(true))
+    OnboardingView()
 }
 
 #Preview {
-    ModelListView()
+    ModelListView(viewModel: OnboardingViewModel())
 }

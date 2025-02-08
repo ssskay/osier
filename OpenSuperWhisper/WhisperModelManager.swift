@@ -1,4 +1,53 @@
+import Combine
 import Foundation
+
+class WhisperDownloadDelegate: NSObject, URLSessionTaskDelegate, URLSessionDownloadDelegate {
+    private let progressCallback: (Double) -> Void
+    private var expectedContentLength: Int64 = 0
+    var completionHandler: ((URL?, Error?) -> Void)?
+    
+    init(progressCallback: @escaping (Double) -> Void) {
+        self.progressCallback = progressCallback
+        super.init()
+        print("WhisperDownloadDelegate initialized")
+    }
+    
+    func urlSession(_ session: URLSession, downloadTask: URLSessionDownloadTask, didFinishDownloadingTo location: URL) {
+        print("Download finished, file temporarily stored at: \(location.path)")
+        completionHandler?(location, nil)
+    }
+    
+    func urlSession(_ session: URLSession, downloadTask: URLSessionDownloadTask, didWriteData bytesWritten: Int64, totalBytesWritten: Int64, totalBytesExpectedToWrite: Int64) {
+        print("didWriteData called - bytesWritten: \(bytesWritten), totalBytesWritten: \(totalBytesWritten), expectedToWrite: \(totalBytesExpectedToWrite)")
+      
+        if expectedContentLength == 0 {
+            expectedContentLength = totalBytesExpectedToWrite
+            print("Set expectedContentLength to: \(expectedContentLength)")
+        }
+        let progress = Double(totalBytesWritten) / Double(expectedContentLength)
+        print("Calculated progress: \(progress)")
+        
+        DispatchQueue.main.async { [weak self] in
+            self?.progressCallback(progress)
+            print("Progress callback executed on main queue: \(progress)")
+        }
+
+        print("Downloading model: \(downloadTask.originalRequest?.url?.absoluteString ?? "Unknown") with progress: \(progress)")
+    }
+
+    func urlSession(_ session: URLSession, downloadTask: URLSessionDownloadTask, didResumeAtOffset fileOffset: Int64, expectedTotalBytes: Int64) {
+        print("Download resumed at offset: \(fileOffset) of \(expectedTotalBytes)")
+    }
+    
+    func urlSession(_ session: URLSession, task: URLSessionTask, didCompleteWithError error: Error?) {
+        if let error = error {
+            print("Download delegate received error: \(error)")
+            completionHandler?(nil, error)
+        } else {
+            print("Download delegate completed successfully")
+        }
+    }
+}
 
 class WhisperModelManager {
     static let shared = WhisperModelManager()
@@ -55,5 +104,74 @@ class WhisperModelManager {
             print("Failed to get available models: \(error)")
             return []
         }
+    }
+    
+    // Download model with progress callback using delegate
+    func downloadModel(url: URL, name: String, progressCallback: @escaping (Double) -> Void) async throws {
+        let destinationURL = modelsDirectory.appendingPathComponent(name)
+        
+        // Check if model already exists
+        if FileManager.default.fileExists(atPath: destinationURL.path) {
+            print("Model already exists at: \(destinationURL.path)")
+            DispatchQueue.main.async {
+                progressCallback(1.0)
+            }
+            return
+        }
+        
+        print("Starting model download:")
+        print("- URL: \(url.absoluteString)")
+        print("- Destination: \(destinationURL.path)")
+        
+        return try await withCheckedThrowingContinuation { continuation in
+            let delegate = WhisperDownloadDelegate(progressCallback: progressCallback)
+            let configuration = URLSessionConfiguration.default
+            configuration.waitsForConnectivity = true
+            configuration.timeoutIntervalForResource = 600 // 10 minutes timeout for large models
+            
+            let session = URLSession(configuration: configuration, delegate: delegate, delegateQueue: .main)
+            print("Initiating download...")
+            
+            // Create a download task without completion handler
+            let downloadTask = session.downloadTask(with: url)
+            
+            // Add completion handling to delegate
+            delegate.completionHandler = { location, error in
+                if let error = error {
+                    print("Download failed with error: \(error)")
+                    continuation.resume(throwing: error)
+                    return
+                }
+                
+                guard let location = location else {
+                    let error = NSError(domain: "WhisperModelManager", code: -1, userInfo: [NSLocalizedDescriptionKey: "No download URL received"])
+                    continuation.resume(throwing: error)
+                    return
+                }
+                
+                do {
+                    print("Download completed. Moving file to destination...")
+                    try FileManager.default.moveItem(at: location, to: destinationURL)
+                    print("Model successfully saved to: \(destinationURL.path)")
+                    
+                    DispatchQueue.main.async {
+                        progressCallback(1.0)
+                    }
+                    
+                    continuation.resume(returning: ())
+                } catch {
+                    print("Failed to move downloaded file: \(error)")
+                    continuation.resume(throwing: error)
+                }
+            }
+            
+            downloadTask.resume()
+        }
+    }
+    
+    // Check if specific model is downloaded
+    func isModelDownloaded(name: String) -> Bool {
+        let modelPath = modelsDirectory.appendingPathComponent(name).path
+        return FileManager.default.fileExists(atPath: modelPath)
     }
 }
