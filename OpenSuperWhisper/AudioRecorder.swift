@@ -101,7 +101,7 @@ class AudioRecorder: NSObject, ObservableObject {
             isPlaying = true
             currentlyPlayingURL = url
         } catch {
-            print("Failed to play recording: \(error)")
+            print("Failed to play recording: \(error), url: \(url)")
             isPlaying = false
             currentlyPlayingURL = nil
         }

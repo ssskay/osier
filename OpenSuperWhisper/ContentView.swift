@@ -7,6 +7,7 @@
 
 import AVFoundation
 import SwiftUI
+import UniformTypeIdentifiers
 
 struct ContentView: View {
     @StateObject private var audioRecorder = AudioRecorder.shared
@@ -16,12 +17,65 @@ struct ContentView: View {
     @StateObject private var recordingStore = RecordingStore.shared
     @State private var isSettingsPresented = false
     @State private var searchText = ""
+    @State private var isDraggingFile = false
 
     private var filteredRecordings: [Recording] {
         if searchText.isEmpty {
             return recordingStore.recordings
         } else {
             return recordingStore.searchRecordings(query: searchText)
+        }
+    }
+
+    // TODO: Handle dropped audio file
+    private func handleDroppedFile(_ providers: [NSItemProvider]) {
+        guard let provider = providers.first else { return }
+
+        if provider.hasItemConformingToTypeIdentifier(UTType.audio.identifier) {
+            Task {
+                do {
+                    // Get the file URL from the provider
+                    let url = try await provider.loadItem(
+                        forTypeIdentifier: UTType.audio.identifier) as? URL
+
+                    print("url: \(url)")
+
+                    guard let url = url else {
+                        print("Error loading item")
+                        return
+                    }
+                    print("start decoding...")
+                    let text = try await transcriptionService.transcribeAudio(
+                        url: url, settings: .shared
+                    )
+
+                    // Create a new Recording instance
+                    let timestamp = Date()
+                    let fileName = "\(Int(timestamp.timeIntervalSince1970)).wav"
+                    let finalURL = Recording(
+                        id: UUID(),
+                        timestamp: timestamp,
+                        fileName: fileName,
+                        transcription: text,
+                        duration: 0 // TODO: Get actual duration
+                    ).url
+                    
+                    // TODO add file copy for playback
+
+                    // Save the recording to store
+                    await recordingStore.addRecording(
+                        Recording(
+                            id: UUID(),
+                            timestamp: timestamp,
+                            fileName: fileName,
+                            transcription: text,
+                            duration: 0 
+                        ))
+
+                } catch {
+                    print("Error processing dropped audio file: \(error)")
+                }
+            }
         }
     }
 
@@ -80,7 +134,6 @@ struct ContentView: View {
                                 )
                             )
                             .frame(height: 20)
-
                     }
                     VStack(spacing: 16) {
                         if !recordingStore.recordings.isEmpty {
@@ -158,6 +211,27 @@ struct ContentView: View {
                 }
                 .ignoresSafeArea()
             }
+        }
+        .overlay {
+            if isDraggingFile {
+                ZStack {
+                    Color(NSColor.windowBackgroundColor)
+                        .opacity(0.95)
+                    VStack(spacing: 16) {
+                        Image(systemName: "arrow.down.circle")
+                            .font(.system(size: 48))
+                            .foregroundColor(.accentColor)
+                            .symbolEffect(.bounce, value: isDraggingFile)
+                        Text("Drop audio file to transcribe")
+                            .font(.headline)
+                    }
+                }
+                .ignoresSafeArea()
+            }
+        }
+        .onDrop(of: [.audio], isTargeted: $isDraggingFile) { providers in
+            handleDroppedFile(providers)
+            return true
         }
         .sheet(isPresented: $isSettingsPresented) {
             SettingsView(settings: settings)
@@ -290,7 +364,9 @@ struct RecordingRow: View {
 
                         Button(action: {
                             NSPasteboard.general.clearContents()
-                            NSPasteboard.general.setString(recording.transcription, forType: .string)
+                            NSPasteboard.general.setString(
+                                recording.transcription, forType: .string
+                            )
                         }) {
                             Image(systemName: "doc.on.doc.fill")
                                 .font(.system(size: 18))
