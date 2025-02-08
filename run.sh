@@ -2,10 +2,11 @@
 
 # Build the app
 echo "Building OpenSuperWhisper..."
-xcodebuild -scheme OpenSuperWhisper -configuration Debug -jobs 8 -derivedDataPath Build -quiet -destination 'platform=macOS,arch=arm64' -skipPackagePluginValidation -skipMacroValidation -UseModernBuildSystem=YES -clonedSourcePackagesDirPath SourcePackages -skipUnavailableActions CODE_SIGNING_ALLOWED=NO CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO OTHER_CODE_SIGN_FLAGS="--entitlements OpenSuperWhisper/OpenSuperWhisper.entitlements" build | xcpretty --simple --color
+BUILD_OUTPUT=$(xcodebuild -scheme OpenSuperWhisper -configuration Debug -jobs 8 -derivedDataPath Build -quiet -destination 'platform=macOS,arch=arm64' -skipPackagePluginValidation -skipMacroValidation -UseModernBuildSystem=YES -clonedSourcePackagesDirPath SourcePackages -skipUnavailableActions CODE_SIGNING_ALLOWED=NO CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO OTHER_CODE_SIGN_FLAGS="--entitlements OpenSuperWhisper/OpenSuperWhisper.entitlements" build 2>&1)
+echo "$BUILD_OUTPUT" | xcpretty --simple --color
 
-# Check if build was successful
-if [ $? -eq 0 ]; then
+# Check if build output contains BUILD FAILED or if the command failed
+if [[ $? -eq 0 ]] && [[ ! "$BUILD_OUTPUT" =~ "BUILD FAILED" ]]; then
     echo "Building successful! Starting the app..."
     
     # Remove quarantine attribute if exists

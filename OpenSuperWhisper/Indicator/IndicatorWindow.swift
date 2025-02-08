@@ -192,6 +192,9 @@ struct IndicatorWindow: View {
     }
     
     var body: some View {
+
+        let rect = RoundedRectangle(cornerRadius: 24)
+        
         VStack(spacing: 12) {
             switch viewModel.state {
             case .recording:
@@ -222,14 +225,15 @@ struct IndicatorWindow: View {
         .padding(.horizontal, 24)
         .frame(height: 36)
         .background {
-            RoundedRectangle(cornerRadius: 24)
+            rect
                 .fill(backgroundColor)
                 .background {
-                    RoundedRectangle(cornerRadius: 24)
+                    rect
                         .fill(Material.thinMaterial)
                 }
                 .shadow(color: .black.opacity(0.15), radius: 10, x: 0, y: 4)
         }
+        .clipShape(rect)
         .frame(width: 200)
         .scaleEffect(viewModel.isVisible ? 1 : 0.5)
         .offset(y: viewModel.isVisible ? 0 : 20)

@@ -16,7 +16,7 @@ struct ContentView: View {
     @StateObject private var recordingStore = RecordingStore.shared
     @State private var isSettingsPresented = false
     @State private var searchText = ""
-    
+
     private var filteredRecordings: [Recording] {
         if searchText.isEmpty {
             return recordingStore.recordings
@@ -24,10 +24,12 @@ struct ContentView: View {
             return recordingStore.searchRecordings(query: searchText)
         }
     }
-    
+
     var body: some View {
         VStack {
-            if !permissionsManager.isMicrophonePermissionGranted || !permissionsManager.isAccessibilityPermissionGranted {
+            if !permissionsManager.isMicrophonePermissionGranted
+                || !permissionsManager.isAccessibilityPermissionGranted
+            {
                 PermissionsView(permissionsManager: permissionsManager)
             } else {
                 VStack(spacing: 0) {
@@ -35,10 +37,10 @@ struct ContentView: View {
                     HStack {
                         Image(systemName: "magnifyingglass")
                             .foregroundColor(.secondary)
-                        
+
                         TextField("Search in transcriptions", text: $searchText)
                             .textFieldStyle(PlainTextFieldStyle())
-                        
+
                         if !searchText.isEmpty {
                             Button(action: {
                                 searchText = ""
@@ -54,16 +56,31 @@ struct ContentView: View {
                     .background(Color.gray.opacity(0.1))
                     .cornerRadius(20)
                     .padding([.horizontal, .top])
-                    
-                    ScrollView(showsIndicators: filteredRecordings.count > 5) {
+
+                    ScrollView(showsIndicators: false) {
                         LazyVStack(spacing: 8) {
                             ForEach(filteredRecordings) { recording in
                                 RecordingRow(recording: recording)
                             }
                         }
                         .padding(.horizontal)
+                        .padding(.top, 16)
                     }
-                    
+                    .overlay(alignment: .top) {
+                        Rectangle()
+                            .fill(
+                                LinearGradient(
+                                    gradient: Gradient(colors: [
+                                        Color(NSColor.windowBackgroundColor).opacity(1),
+                                        Color(NSColor.windowBackgroundColor).opacity(0),
+                                    ]),
+                                    startPoint: .top,
+                                    endPoint: .bottom
+                                )
+                            )
+                            .frame(height: 20)
+
+                    }
                     VStack(spacing: 16) {
                         if !recordingStore.recordings.isEmpty {
                             HStack {
@@ -75,7 +92,7 @@ struct ContentView: View {
                                         .foregroundColor(.red)
                                 }
                                 .buttonStyle(.plain)
-                                
+
                                 Button(action: {
                                     isSettingsPresented.toggle()
                                 }) {
@@ -86,7 +103,7 @@ struct ContentView: View {
                             }
                             .padding([.horizontal, .top])
                         }
-                        
+
                         if audioRecorder.isRecording {
                             Text(transcriptionService.currentSegment)
                                 .font(.body)
@@ -96,11 +113,11 @@ struct ContentView: View {
                                 .background(Color.gray.opacity(0.1))
                                 .cornerRadius(10)
                         }
-                        
+
                         Button(action: {
                             let viewModel = IndicatorWindowManager.shared.show()
                             viewModel.startRecording()
-                            
+
                             if audioRecorder.isRecording {
                                 viewModel.startDecoding()
                                 transcriptionService.stopTranscribing()
@@ -109,10 +126,13 @@ struct ContentView: View {
                                 transcriptionService.startRealTimeTranscription(settings: settings)
                             }
                         }) {
-                            Image(systemName: audioRecorder.isRecording ? "stop.circle.fill" : "record.circle.fill")
-                                .font(.system(size: 64))
-                                .foregroundColor(audioRecorder.isRecording ? .red : .accentColor)
-                                .contentTransition(.symbolEffect(.replace))
+                            Image(
+                                systemName: audioRecorder.isRecording
+                                    ? "stop.circle.fill" : "record.circle.fill"
+                            )
+                            .font(.system(size: 64))
+                            .foregroundColor(audioRecorder.isRecording ? .red : .accentColor)
+                            .contentTransition(.symbolEffect(.replace))
                         }
                         .buttonStyle(.plain)
                         .disabled(transcriptionService.isLoading)
@@ -153,27 +173,27 @@ struct ContentView: View {
 
 struct PermissionsView: View {
     @ObservedObject var permissionsManager: PermissionsManager
-    
+
     var body: some View {
         VStack(spacing: 20) {
             Text("Required Permissions")
                 .font(.title)
                 .padding()
-            
+
             PermissionRow(
                 isGranted: permissionsManager.isMicrophonePermissionGranted,
                 title: "Microphone Access",
                 description: "Required for audio recording",
                 action: { permissionsManager.openSystemPreferences(for: .microphone) }
             )
-            
+
             PermissionRow(
                 isGranted: permissionsManager.isAccessibilityPermissionGranted,
                 title: "Accessibility Access",
                 description: "Required for global keyboard shortcuts",
                 action: { permissionsManager.openSystemPreferences(for: .accessibility) }
             )
-            
+
             Spacer()
         }
         .padding()
@@ -185,18 +205,18 @@ struct PermissionRow: View {
     let title: String
     let description: String
     let action: () -> Void
-    
+
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack {
                 Image(systemName: isGranted ? "checkmark.circle.fill" : "xmark.circle.fill")
                     .foregroundColor(isGranted ? .green : .red)
-                
+
                 Text(title)
                     .font(.headline)
-                
+
                 Spacer()
-                
+
                 if !isGranted {
                     Button("Grant Access") {
                         action()
@@ -204,7 +224,7 @@ struct PermissionRow: View {
                     .buttonStyle(.borderedProminent)
                 }
             }
-            
+
             Text(description)
                 .font(.subheadline)
                 .foregroundColor(.secondary)
@@ -221,11 +241,11 @@ struct RecordingRow: View {
     @StateObject private var recordingStore = RecordingStore.shared
     @State private var showTranscription = false
     @State private var isHovered = false
-    
+
     private var isPlaying: Bool {
         audioRecorder.isPlaying && audioRecorder.currentlyPlayingURL == recording.url
     }
-    
+
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack(alignment: .center, spacing: 8) {
@@ -233,14 +253,14 @@ struct RecordingRow: View {
                     Text(recording.timestamp, style: .date)
                         .font(.subheadline)
                         .foregroundColor(.primary)
-                    
+
                     Text(recording.timestamp, style: .time)
                         .font(.caption)
                         .foregroundColor(.secondary)
                 }
-                
+
                 Spacer()
-                
+
                 HStack(spacing: 16) {
                     Button(action: {
                         if isPlaying {
@@ -255,7 +275,7 @@ struct RecordingRow: View {
                             .contentTransition(.symbolEffect(.replace))
                     }
                     .buttonStyle(.plain)
-                    
+
                     Button(action: {
                         NSPasteboard.general.clearContents()
                         NSPasteboard.general.setString(recording.transcription, forType: .string)
@@ -266,7 +286,7 @@ struct RecordingRow: View {
                     }
                     .buttonStyle(.plain)
                     .help("Copy entire text")
-                    
+
                     Button(action: {
                         if isPlaying {
                             audioRecorder.stopPlaying()
@@ -284,12 +304,14 @@ struct RecordingRow: View {
             .padding(.horizontal, 12)
             .padding(.vertical, 8)
             .background(Color(NSColor.controlBackgroundColor))
-            
+
             Divider()
                 .padding(.horizontal, 12)
-            
-            TranscriptionView(transcribedText: recording.transcription, isExpanded: $showTranscription)
-                .padding(.horizontal, 4)
+
+            TranscriptionView(
+                transcribedText: recording.transcription, isExpanded: $showTranscription
+            )
+            .padding(.horizontal, 4)
         }
         .background(Color(NSColor.controlBackgroundColor))
         .cornerRadius(8)
@@ -305,15 +327,15 @@ struct RecordingRow: View {
 struct TranscriptionView: View {
     let transcribedText: String
     @Binding var isExpanded: Bool
-    
+
     private var lines: [String] {
         transcribedText.components(separatedBy: .newlines)
     }
-    
+
     private var hasMoreLines: Bool {
         !transcribedText.isEmpty && transcribedText.count > 150
     }
-    
+
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             Group {
@@ -338,7 +360,7 @@ struct TranscriptionView: View {
                 }
             }
             .padding(8)
-            
+
             if hasMoreLines {
                 Button(action: { isExpanded.toggle() }) {
                     HStack(spacing: 4) {

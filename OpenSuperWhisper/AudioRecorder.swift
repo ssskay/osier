@@ -67,6 +67,17 @@ class AudioRecorder: NSObject, ObservableObject {
     func stopRecording() -> URL? {
         audioRecorder?.stop()
         isRecording = false
+        
+        // Check if recording duration is less than 1 second
+        if let url = currentRecordingURL,
+           let duration = try? AVAudioPlayer(contentsOf: url).duration,
+           duration < 1.0 {
+            // Remove recordings shorter than 1 second
+            try? FileManager.default.removeItem(at: url)
+            currentRecordingURL = nil
+            return nil
+        }
+        
         let url = currentRecordingURL
         currentRecordingURL = nil
         return url
