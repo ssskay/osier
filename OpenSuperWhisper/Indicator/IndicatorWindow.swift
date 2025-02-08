@@ -90,43 +90,7 @@ class IndicatorViewModel: ObservableObject {
     }
     
     func insertTextUsingPasteboard(_ text: String) {
-        // 1. Копируем текст в буфер обмена
-        let pasteboard = NSPasteboard.general
-        pasteboard.declareTypes([.string], owner: nil)
-        pasteboard.setString(text, forType: .string)
-        
-        // 2. Создаем источник событий
-        guard let source = CGEventSource(stateID: .combinedSessionState) else {
-            print("Не удалось создать источник событий")
-            return
-        }
-        
-        // Коды клавиш (в dec):
-        // - Command (левая) — 55
-        // - V — 9
-        let keyCodeCmd: CGKeyCode = 55
-        let keyCodeV: CGKeyCode = 9
-        
-        // Создаем события: нажатие Command, нажатие V, отпускание V, отпускание Command.
-        let cmdDown = CGEvent(keyboardEventSource: source, virtualKey: keyCodeCmd, keyDown: true)
-        
-        // При нажатии V нужно выставить флаг Command
-        let vDown = CGEvent(keyboardEventSource: source, virtualKey: keyCodeV, keyDown: true)
-        vDown?.flags = .maskCommand
-        
-        let vUp = CGEvent(keyboardEventSource: source, virtualKey: keyCodeV, keyDown: false)
-        vUp?.flags = .maskCommand
-        
-        let cmdUp = CGEvent(keyboardEventSource: source, virtualKey: keyCodeCmd, keyDown: false)
-        
-        // Определяем место отправки событий
-        let eventTapLocation = CGEventTapLocation.cghidEventTap
-        
-        // Отправляем события в систему
-        cmdDown?.post(tap: eventTapLocation)
-        vDown?.post(tap: eventTapLocation)
-        vUp?.post(tap: eventTapLocation)
-        cmdUp?.post(tap: eventTapLocation)
+        ClipboardUtil.insertTextUsingPasteboard(text)
     }
 
     func stop() {
