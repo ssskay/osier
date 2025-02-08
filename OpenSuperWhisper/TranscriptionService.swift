@@ -26,7 +26,7 @@ class TranscriptionService: ObservableObject {
     }
     
     private func loadModel() {
-        if let modelPath = UserDefaults.standard.string(forKey: "selectedModelPath") {
+        if let modelPath = AppPreferences.shared.selectedModelPath {
             isLoading = true
             DispatchQueue.global(qos: .userInitiated).async { [weak self] in
                 let params = WhisperContextParams()
@@ -339,7 +339,7 @@ class TranscriptionService: ObservableObject {
     }
     
     private func createContext() -> MyWhisperContext? {
-        guard let modelPath = UserDefaults.standard.string(forKey: "selectedModelPath") else {
+        guard let modelPath = AppPreferences.shared.selectedModelPath else {
             return nil
         }
         
@@ -409,4 +409,5 @@ enum TranscriptionError: Error {
     case audioConversionFailed
     case processingFailed
     case languageAllocationFailed
+    case modelNotFound
 }

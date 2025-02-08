@@ -6,9 +6,9 @@
 //
 
 import AVFoundation
+import KeyboardShortcuts
 import SwiftUI
 import UniformTypeIdentifiers
-import KeyboardShortcuts
 
 class ContentViewModel: ObservableObject {
     @Published var state: RecordingState = .idle
@@ -17,31 +17,31 @@ class ContentViewModel: ObservableObject {
     @Published var transcriptionService = TranscriptionService.shared
     @Published var settings = Settings.shared
     @Published var recordingStore = RecordingStore.shared
-    
+
     private var blinkTimer: Timer?
-    
+
     var isRecording: Bool {
         recorder.isRecording
     }
-    
+
     func startRecording() {
         state = .recording
         startBlinking()
         recorder.startRecording()
     }
-    
+
     func startDecoding() {
         state = .decoding
         stopBlinking()
-        
+
         if let tempURL = recorder.stopRecording() {
             Task { [weak self] in
                 guard let self = self else { return }
-                
+
                 do {
                     print("start decoding...")
                     let text = try await transcriptionService.transcribeAudio(url: tempURL, settings: settings)
-                    
+
                     // Create a new Recording instance
                     let timestamp = Date()
                     let fileName = "\(Int(timestamp.timeIntervalSince1970)).wav"
@@ -52,10 +52,10 @@ class ContentViewModel: ObservableObject {
                         transcription: text,
                         duration: 0 // TODO: Get actual duration
                     ).url
-                    
+
                     // Move the temporary recording to final location
                     try recorder.moveTemporaryRecording(from: tempURL, to: finalURL)
-                    
+
                     // Save the recording to store
                     await recordingStore.addRecording(Recording(
                         id: UUID(),
@@ -64,36 +64,44 @@ class ContentViewModel: ObservableObject {
                         transcription: text,
                         duration: 0 // TODO: Get actual duration
                     ))
-                    
+
                     print("Transcription result: \(text)")
                 } catch {
                     print("Error transcribing audio: \(error)")
                     try? FileManager.default.removeItem(at: tempURL)
                 }
-                
+
                 await MainActor.run {
                     self.state = .idle
                 }
             }
         }
     }
-    
+
     func stop() {
         state = .idle
         stopBlinking()
         recorder.cleanupTemporaryRecordings()
     }
-    
+
     private func startBlinking() {
         blinkTimer = Timer.scheduledTimer(withTimeInterval: 0.8, repeats: true) { [weak self] _ in
             self?.isBlinking.toggle()
         }
     }
-    
+
     private func stopBlinking() {
         blinkTimer?.invalidate()
         blinkTimer = nil
         isBlinking = false
+    }
+
+    private func checkModelAndShowOnboarding() {
+//        let defaultModel = WhisperModelManager.shared.defaultModel
+//        if AppPreferences.shared.selectedModelPath == nil {
+//            showOnboarding = true
+//            AppPreferences.shared.selectedModelPath = defaultModel.path
+//        }
     }
 }
 
@@ -160,7 +168,7 @@ struct ContentView: View {
                                 LinearGradient(
                                     gradient: Gradient(colors: [
                                         Color(NSColor.windowBackgroundColor).opacity(1),
-                                        Color(NSColor.windowBackgroundColor).opacity(0),
+                                        Color(NSColor.windowBackgroundColor).opacity(0)
                                     ]),
                                     startPoint: .top,
                                     endPoint: .bottom
@@ -168,7 +176,7 @@ struct ContentView: View {
                             )
                             .frame(height: 20)
                     }
-                    
+
                     VStack(spacing: 16) {
                         // Кнопка записи по центру
                         Button(action: {
@@ -184,7 +192,7 @@ struct ContentView: View {
                         .disabled(viewModel.transcriptionService.isLoading)
                         .padding(.top, 24)
                         .padding(.bottom, 16)
-                        
+
                         // Нижняя панель с подсказкой и кнопками управления
                         HStack {
                             VStack(alignment: .leading, spacing: 8) {
@@ -200,7 +208,7 @@ struct ContentView: View {
                                         .foregroundColor(.secondary)
                                 }
                                 .padding(.leading, 4)
-                                
+
                                 // Подсказка о drag-n-drop
                                 HStack(spacing: 6) {
                                     Image(systemName: "arrow.down.doc.fill")
@@ -212,9 +220,9 @@ struct ContentView: View {
                                 }
                                 .padding(.leading, 4)
                             }
-                            
+
                             Spacer()
-                            
+
                             // Кнопки управления
                             if !viewModel.recordingStore.recordings.isEmpty {
                                 Button(action: {
@@ -238,15 +246,14 @@ struct ContentView: View {
                                 }
                                 .interactiveDismissDisabled()
 
-                              
                             }
-                              Button(action: {
-                                    isSettingsPresented.toggle()
-                                }) {
-                                    Image(systemName: "gear")
-                                        .font(.title2)
-                                }
-                                .buttonStyle(.plain)
+                            Button(action: {
+                                isSettingsPresented.toggle()
+                            }) {
+                                Image(systemName: "gear")
+                                    .font(.title2)
+                            }
+                            .buttonStyle(.plain)
                         }
                     }
                     .padding()
@@ -275,11 +282,7 @@ struct ContentView: View {
             SettingsView(settings: viewModel.settings)
         }
         .onAppear {
-            if UserDefaults.standard.string(forKey: "selectedModelPath") == nil {
-                if let defaultModel = WhisperModelManager.shared.getAvailableModels().first {
-                    UserDefaults.standard.set(defaultModel.path, forKey: "selectedModelPath")
-                }
-            }
+//            checkModelAndShowOnboarding()
         }
     }
 }
@@ -501,7 +504,7 @@ struct TranscriptionView: View {
 
 struct MainRecordButton: View {
     let isRecording: Bool
-    
+
     var body: some View {
         Circle()
             .fill(

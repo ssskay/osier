@@ -62,6 +62,7 @@ class ShortcutManager {
 //                }
             }
         }
+        KeyboardShortcuts.disable(.escape)
     }
 
 }
