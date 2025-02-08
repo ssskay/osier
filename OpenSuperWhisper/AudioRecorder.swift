@@ -3,57 +3,43 @@ import Foundation
 
 class AudioRecorder: NSObject, ObservableObject {
     @Published var isRecording = false
-    @Published var recordings: [URL] = []
+    @Published var isPlaying = false
+    @Published var currentlyPlayingURL: URL?
     
     private var audioRecorder: AVAudioRecorder?
     private var audioPlayer: AVAudioPlayer?
-    private let recordingsDirectory: URL
-    private var currentRecordingURL: URL? // To store the current recording's URL
+    private let temporaryDirectory: URL
+    private var currentRecordingURL: URL?
 
     // MARK: - Singleton Instance
-
-    static let shared = AudioRecorder() // The shared instance
+    static let shared = AudioRecorder()
     
-    override private init() { // Private initializer to prevent external instantiation
-        let applicationSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
-        let appDirectory = applicationSupport.appendingPathComponent(Bundle.main.bundleIdentifier!)
-        recordingsDirectory = appDirectory.appendingPathComponent("recordings")
+    override private init() {
+        let tempDir = FileManager.default.temporaryDirectory
+        temporaryDirectory = tempDir.appendingPathComponent("temp_recordings")
         
         super.init()
-        
-        createRecordingsDirectoryIfNeeded()
-        loadRecordings()
+        createTemporaryDirectoryIfNeeded()
     }
     
-    private func createRecordingsDirectoryIfNeeded() {
+    private func createTemporaryDirectoryIfNeeded() {
         do {
-            try FileManager.default.createDirectory(at: recordingsDirectory, withIntermediateDirectories: true)
+            try FileManager.default.createDirectory(at: temporaryDirectory, withIntermediateDirectories: true)
         } catch {
-            print("Failed to create recordings directory: \(error)")
-        }
-    }
-    
-    private func loadRecordings() {
-        do {
-            recordings = try FileManager.default.contentsOfDirectory(at: recordingsDirectory, includingPropertiesForKeys: nil)
-                .filter { $0.pathExtension == "wav" }
-                .sorted { $0.lastPathComponent > $1.lastPathComponent }
-        } catch {
-            print("Failed to load recordings: \(error)")
+            print("Failed to create temporary recordings directory: \(error)")
         }
     }
     
     func startRecording() {
         if isRecording {
             stopRecording()
-            print("Wtf return")
             return
         }
         
         let timestamp = Int(Date().timeIntervalSince1970)
         let filename = "\(timestamp).wav"
-        let fileURL = recordingsDirectory.appendingPathComponent(filename)
-        currentRecordingURL = fileURL // Save the URL of the current recording
+        let fileURL = temporaryDirectory.appendingPathComponent(filename)
+        currentRecordingURL = fileURL
         
         print("start record file to \(fileURL)")
         
@@ -73,42 +59,72 @@ class AudioRecorder: NSObject, ObservableObject {
             isRecording = true
         } catch {
             print("Failed to start recording: \(error)")
-            currentRecordingURL = nil // Reset the URL if recording fails
+            currentRecordingURL = nil
         }
     }
     
-    func stopRecording() -> URL? { // Changed to return URL?
+    func stopRecording() -> URL? {
         audioRecorder?.stop()
         isRecording = false
-        loadRecordings()
         let url = currentRecordingURL
-        currentRecordingURL = nil // Reset the URL
-        return url // Return the URL of the stopped recording
+        currentRecordingURL = nil
+        return url
+    }
+    
+    func moveTemporaryRecording(from tempURL: URL, to finalURL: URL) throws {
+        if FileManager.default.fileExists(atPath: finalURL.path) {
+            try FileManager.default.removeItem(at: finalURL)
+        }
+        try FileManager.default.moveItem(at: tempURL, to: finalURL)
     }
     
     func playRecording(url: URL) {
+        // Stop current playback if any
+        stopPlaying()
+        
         do {
             audioPlayer = try AVAudioPlayer(contentsOf: url)
+            audioPlayer?.delegate = self
             audioPlayer?.play()
+            isPlaying = true
+            currentlyPlayingURL = url
         } catch {
             print("Failed to play recording: \(error)")
+            isPlaying = false
+            currentlyPlayingURL = nil
         }
     }
     
-    func deleteRecording(url: URL) {
+    func stopPlaying() {
+        audioPlayer?.stop()
+        audioPlayer = nil
+        isPlaying = false
+        currentlyPlayingURL = nil
+    }
+    
+    func cleanupTemporaryRecordings() {
         do {
-            try FileManager.default.removeItem(at: url)
-            loadRecordings()
+            let files = try FileManager.default.contentsOfDirectory(at: temporaryDirectory, includingPropertiesForKeys: nil)
+            for file in files {
+                try? FileManager.default.removeItem(at: file)
+            }
         } catch {
-            print("Failed to delete recording: \(error)")
+            print("Failed to cleanup temporary recordings: \(error)")
         }
     }
 }
 
 extension AudioRecorder: AVAudioRecorderDelegate {
     func audioRecorderDidFinishRecording(_ recorder: AVAudioRecorder, successfully flag: Bool) {
-        if flag {
-            loadRecordings()
+        if !flag {
+            currentRecordingURL = nil
         }
+    }
+}
+
+extension AudioRecorder: AVAudioPlayerDelegate {
+    func audioPlayerDidFinishPlaying(_ player: AVAudioPlayer, successfully flag: Bool) {
+        isPlaying = false
+        currentlyPlayingURL = nil
     }
 }

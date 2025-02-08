@@ -21,6 +21,7 @@ class IndicatorViewModel: ObservableObject {
     
     var delegate: IndicatorViewDelegate?
     private var blinkTimer: Timer?
+    private let recordingStore = RecordingStore.shared
     
     var isRecording: Bool {
         recorder.isRecording
@@ -36,27 +37,47 @@ class IndicatorViewModel: ObservableObject {
         state = .decoding
         stopBlinking()
         
-        if let url = recorder.stopRecording() {
+        if let tempURL = recorder.stopRecording() {
             let transcription = TranscriptionService.shared
             
             Task { [weak self] in
-                
                 guard let self = self else { return }
                 
                 do {
-                    
                     print("start decoding...")
-                    let text = try await transcription.transcribeAudio(url: url, settings: .shared)
+                    let text = try await transcription.transcribeAudio(url: tempURL, settings: .shared)
+                    
+                    // Create a new Recording instance
+                    let timestamp = Date()
+                    let fileName = "\(Int(timestamp.timeIntervalSince1970)).wav"
+                    let finalURL = Recording(
+                        id: UUID(),
+                        timestamp: timestamp,
+                        fileName: fileName,
+                        transcription: text,
+                        duration: 0 // TODO: Get actual duration
+                    ).url
+                    
+                    // Move the temporary recording to final location
+                    try recorder.moveTemporaryRecording(from: tempURL, to: finalURL)
+                    
+                    // Save the recording to store
+                    await recordingStore.addRecording(Recording(
+                        id: UUID(),
+                        timestamp: timestamp,
+                        fileName: fileName,
+                        transcription: text,
+                        duration: 0 // TODO: Get actual duration
+                    ))
                     
                     insertTextUsingPasteboard(text)
                     print("Transcription result: \(text)")
-
                 } catch {
                     print("Error transcribing audio: \(error)")
+                    try? FileManager.default.removeItem(at: tempURL)
                 }
                 
                 await self.delegate?.didFinishDecoding()
-                
             }
         } else {
             
@@ -111,6 +132,7 @@ class IndicatorViewModel: ObservableObject {
     func stop() {
         state = .idle
         stopBlinking()
+        recorder.cleanupTemporaryRecordings()
     }
     
     private func startBlinking() {
@@ -222,7 +244,7 @@ struct IndicatorWindow: View {
 struct IndicatorWindowPreview: View {
     @StateObject private var recordingVM = {
         let vm = IndicatorViewModel()
-        vm.startRecording()
+//        vm.startRecording()
         return vm
     }()
     

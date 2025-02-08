@@ -13,38 +13,80 @@ struct ContentView: View {
     @StateObject private var settings = Settings.shared
     @StateObject private var permissionsManager = PermissionsManager()
     @StateObject private var transcriptionService = TranscriptionService.shared
+    @StateObject private var recordingStore = RecordingStore.shared
     @State private var isSettingsPresented = false
+    @State private var searchText = ""
+    
+    private var filteredRecordings: [Recording] {
+        if searchText.isEmpty {
+            return recordingStore.recordings
+        } else {
+            return recordingStore.searchRecordings(query: searchText)
+        }
+    }
     
     var body: some View {
-        NavigationView {
-            VStack {
-                if !permissionsManager.isMicrophonePermissionGranted || !permissionsManager.isAccessibilityPermissionGranted {
-                    PermissionsView(permissionsManager: permissionsManager)
-                } else {
-                    List {
-                        ForEach(audioRecorder.recordings, id: \.self) { recording in
-                            RecordingRow(url: recording, audioRecorder: audioRecorder, settings: settings)
-                        }
-                    }
-                    .disabled(transcriptionService.isLoading)
-                    
+        VStack {
+            if !permissionsManager.isMicrophonePermissionGranted || !permissionsManager.isAccessibilityPermissionGranted {
+                PermissionsView(permissionsManager: permissionsManager)
+            } else {
+                VStack(spacing: 0) {
+                    // Search bar
                     HStack {
-//                        Text("Recording Shortcut: \(settings.recordingShortcut.description)")
-//                            .foregroundColor(.secondary)
-//
-                        Spacer()
+                        Image(systemName: "magnifyingglass")
+                            .foregroundColor(.secondary)
                         
-                        Button(action: {
-                            isSettingsPresented.toggle()
-                        }) {
-                            Image(systemName: "gear")
-                                .font(.title2)
+                        TextField("Search in transcriptions", text: $searchText)
+                            .textFieldStyle(PlainTextFieldStyle())
+                        
+                        if !searchText.isEmpty {
+                            Button(action: {
+                                searchText = ""
+                            }) {
+                                Image(systemName: "xmark.circle.fill")
+                                    .foregroundColor(.secondary)
+                                    .imageScale(.medium)
+                            }
+                            .buttonStyle(.plain)
                         }
                     }
-                    .padding()
-                    .disabled(transcriptionService.isLoading)
+                    .padding(10)
+                    .background(Color.gray.opacity(0.1))
+                    .cornerRadius(20)
+                    .padding([.horizontal, .top])
+                    
+                    ScrollView(showsIndicators: filteredRecordings.count > 5) {
+                        LazyVStack(spacing: 8) {
+                            ForEach(filteredRecordings) { recording in
+                                RecordingRow(recording: recording)
+                            }
+                        }
+                        .padding(.horizontal)
+                    }
                     
                     VStack(spacing: 16) {
+                        if !recordingStore.recordings.isEmpty {
+                            HStack {
+                                Spacer()
+                                Button(action: {
+                                    recordingStore.deleteAllRecordings()
+                                }) {
+                                    Text("Clear All")
+                                        .foregroundColor(.red)
+                                }
+                                .buttonStyle(.plain)
+                                
+                                Button(action: {
+                                    isSettingsPresented.toggle()
+                                }) {
+                                    Image(systemName: "gear")
+                                        .font(.title2)
+                                }
+                                .buttonStyle(.plain)
+                            }
+                            .padding([.horizontal, .top])
+                        }
+                        
                         if audioRecorder.isRecording {
                             Text(transcriptionService.currentSegment)
                                 .font(.body)
@@ -53,53 +95,54 @@ struct ContentView: View {
                                 .padding()
                                 .background(Color.gray.opacity(0.1))
                                 .cornerRadius(10)
-                                .animation(.easeInOut, value: transcriptionService.currentSegment)
                         }
                         
                         Button(action: {
                             let viewModel = IndicatorWindowManager.shared.show()
                             viewModel.startRecording()
-
+                            
                             if audioRecorder.isRecording {
-                                audioRecorder.stopRecording()
+                                viewModel.startDecoding()
                                 transcriptionService.stopTranscribing()
                             } else {
                                 audioRecorder.startRecording()
                                 transcriptionService.startRealTimeTranscription(settings: settings)
                             }
                         }) {
-                            Image(systemName: audioRecorder.isRecording ? "stop.circle.fill" : "record.circle")
+                            Image(systemName: audioRecorder.isRecording ? "stop.circle.fill" : "record.circle.fill")
                                 .font(.system(size: 64))
                                 .foregroundColor(audioRecorder.isRecording ? .red : .accentColor)
+                                .contentTransition(.symbolEffect(.replace))
                         }
+                        .buttonStyle(.plain)
                         .disabled(transcriptionService.isLoading)
                     }
                     .padding()
                 }
             }
-            .overlay {
-                if transcriptionService.isLoading {
-                    ZStack {
-                        Color.black.opacity(0.3)
-                        VStack(spacing: 16) {
-                            ProgressView()
-                                .scaleEffect(1.5)
-                            Text("Loading Whisper Model...")
-                                .foregroundColor(.white)
-                                .font(.headline)
-                        }
+        }
+        .frame(minWidth: 400, idealWidth: 400)
+        .background(Color(NSColor.windowBackgroundColor))
+        .overlay {
+            if transcriptionService.isLoading {
+                ZStack {
+                    Color.black.opacity(0.3)
+                    VStack(spacing: 16) {
+                        ProgressView()
+                            .scaleEffect(1.5)
+                        Text("Loading Whisper Model...")
+                            .foregroundColor(.white)
+                            .font(.headline)
                     }
-                    .ignoresSafeArea()
                 }
+                .ignoresSafeArea()
             }
-            .navigationTitle("OpenSuperWhisper")
         }
         .sheet(isPresented: $isSettingsPresented) {
             SettingsView(settings: settings)
         }
         .onAppear {
             if UserDefaults.standard.string(forKey: "selectedModelPath") == nil {
-                // Set default model on first launch
                 if let defaultModel = WhisperModelManager.shared.getAvailableModels().first {
                     UserDefaults.standard.set(defaultModel.path, forKey: "selectedModelPath")
                 }
@@ -173,75 +216,89 @@ struct PermissionRow: View {
 }
 
 struct RecordingRow: View {
-    let url: URL
-    let audioRecorder: AudioRecorder
-    let settings: Settings
-    @StateObject private var transcriptionService = TranscriptionService.shared
+    let recording: Recording
+    @StateObject private var audioRecorder = AudioRecorder.shared
+    @StateObject private var recordingStore = RecordingStore.shared
     @State private var showTranscription = false
+    @State private var isHovered = false
+    
+    private var isPlaying: Bool {
+        audioRecorder.isPlaying && audioRecorder.currentlyPlayingURL == recording.url
+    }
     
     var body: some View {
-        VStack(alignment: .leading) {
-            HStack {
-                Text(url.lastPathComponent)
+        VStack(alignment: .leading, spacing: 0) {
+            HStack(alignment: .center, spacing: 8) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(recording.timestamp, style: .date)
+                        .font(.subheadline)
+                        .foregroundColor(.primary)
+                    
+                    Text(recording.timestamp, style: .time)
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
                 
                 Spacer()
                 
-                Button(action: {
-                    audioRecorder.playRecording(url: url)
-                }) {
-                    Image(systemName: "play.circle")
-                        .font(.title2)
-                }
-                
-                Button(action: {
-                    Task {
-                        do {
-                            showTranscription = true
-                            _ = try await transcriptionService.transcribeAudio(url: url, settings: settings)
-                        } catch {
-                            print("Transcription failed: \(error)")
+                HStack(spacing: 16) {
+                    Button(action: {
+                        if isPlaying {
+                            audioRecorder.stopPlaying()
+                        } else {
+                            audioRecorder.playRecording(url: recording.url)
                         }
+                    }) {
+                        Image(systemName: isPlaying ? "stop.circle.fill" : "play.circle.fill")
+                            .font(.system(size: 20))
+                            .foregroundColor(isPlaying ? .red : .accentColor)
+                            .contentTransition(.symbolEffect(.replace))
                     }
-                }) {
-                    Image(systemName: "waveform")
-                        .font(.title2)
-                        .foregroundColor(.blue)
-                }
-                .disabled(transcriptionService.isTranscribing)
-                
-                Button(action: {
-                    audioRecorder.deleteRecording(url: url)
-                }) {
-                    Image(systemName: "trash")
-                        .font(.title2)
-                        .foregroundColor(.red)
-                }
-            }
-            
-            if transcriptionService.isTranscribing {
-                VStack(alignment: .leading, spacing: 8) {
-                    ProgressView("Transcribing...")
-                        .padding(.vertical, 4)
+                    .buttonStyle(.plain)
                     
-                    if !transcriptionService.currentSegment.isEmpty {
-                        Text(transcriptionService.currentSegment)
-                            .font(.body)
+                    Button(action: {
+                        NSPasteboard.general.clearContents()
+                        NSPasteboard.general.setString(recording.transcription, forType: .string)
+                    }) {
+                        Image(systemName: "doc.on.doc.fill")
+                            .font(.system(size: 18))
                             .foregroundColor(.secondary)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .padding(8)
-                            .background(Color.gray.opacity(0.1))
-                            .cornerRadius(8)
                     }
+                    .buttonStyle(.plain)
+                    .help("Copy entire text")
+                    
+                    Button(action: {
+                        if isPlaying {
+                            audioRecorder.stopPlaying()
+                        }
+                        recordingStore.deleteRecording(recording)
+                    }) {
+                        Image(systemName: "trash.fill")
+                            .font(.system(size: 18))
+                            .foregroundColor(.secondary)
+                    }
+                    .buttonStyle(.plain)
                 }
+                .opacity(isHovered ? 1 : 0.7)
             }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
+            .background(Color(NSColor.controlBackgroundColor))
             
-            if !transcriptionService.transcribedText.isEmpty {
-                TranscriptionView(transcribedText: transcriptionService.transcribedText, isExpanded: $showTranscription)
+            Divider()
+                .padding(.horizontal, 12)
+            
+            TranscriptionView(transcribedText: recording.transcription, isExpanded: $showTranscription)
+                .padding(.horizontal, 4)
+        }
+        .background(Color(NSColor.controlBackgroundColor))
+        .cornerRadius(8)
+        .onHover { hovering in
+            withAnimation(.easeInOut(duration: 0.2)) {
+                isHovered = hovering
             }
         }
         .padding(.vertical, 4)
-        .animation(.easeInOut, value: transcriptionService.isTranscribing)
-        .animation(.easeInOut, value: transcriptionService.currentSegment)
     }
 }
 
@@ -249,30 +306,52 @@ struct TranscriptionView: View {
     let transcribedText: String
     @Binding var isExpanded: Bool
     
+    private var lines: [String] {
+        transcribedText.components(separatedBy: .newlines)
+    }
+    
+    private var hasMoreLines: Bool {
+        !transcribedText.isEmpty && transcribedText.count > 150
+    }
+    
     var body: some View {
-        VStack(alignment: .leading) {
-            HStack {
-                Text("Transcription")
-                    .font(.headline)
-                Spacer()
-                Button(action: { isExpanded.toggle() }) {
-                    Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
-                }
-            }
-            
-            if isExpanded {
-                ScrollView {
+        VStack(alignment: .leading, spacing: 8) {
+            Group {
+                if isExpanded {
+                    TextEditor(text: .constant(transcribedText))
+                        .font(.body)
+                        .frame(maxWidth: .infinity)
+                        .frame(minHeight: 100, maxHeight: 200)
+                        .scrollContentBackground(.hidden)
+                } else {
                     Text(transcribedText)
                         .font(.body)
+                        .lineLimit(3)
                         .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(8)
-                        .background(Color.gray.opacity(0.1))
-                        .cornerRadius(8)
+                        .textSelection(.enabled)
+                        .contentShape(Rectangle())
+                        .onTapGesture {
+                            if hasMoreLines {
+                                isExpanded.toggle()
+                            }
+                        }
                 }
-                .frame(maxHeight: 200)
+            }
+            .padding(8)
+            
+            if hasMoreLines {
+                Button(action: { isExpanded.toggle() }) {
+                    HStack(spacing: 4) {
+                        Text(isExpanded ? "Show less" : "Show more")
+                        Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
+                    }
+                    .foregroundColor(.blue)
+                    .font(.footnote)
+                }
+                .padding(.horizontal, 8)
+                .padding(.bottom, 8)
             }
         }
-        .padding(.vertical, 4)
     }
 }
 
