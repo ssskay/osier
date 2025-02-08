@@ -8,21 +8,107 @@
 import AVFoundation
 import SwiftUI
 import UniformTypeIdentifiers
+import KeyboardShortcuts
+
+class ContentViewModel: ObservableObject {
+    @Published var state: RecordingState = .idle
+    @Published var isBlinking = false
+    @Published var recorder: AudioRecorder = .shared
+    @Published var transcriptionService = TranscriptionService.shared
+    @Published var settings = Settings.shared
+    @Published var recordingStore = RecordingStore.shared
+    
+    private var blinkTimer: Timer?
+    
+    var isRecording: Bool {
+        recorder.isRecording
+    }
+    
+    func startRecording() {
+        state = .recording
+        startBlinking()
+        recorder.startRecording()
+    }
+    
+    func startDecoding() {
+        state = .decoding
+        stopBlinking()
+        
+        if let tempURL = recorder.stopRecording() {
+            Task { [weak self] in
+                guard let self = self else { return }
+                
+                do {
+                    print("start decoding...")
+                    let text = try await transcriptionService.transcribeAudio(url: tempURL, settings: settings)
+                    
+                    // Create a new Recording instance
+                    let timestamp = Date()
+                    let fileName = "\(Int(timestamp.timeIntervalSince1970)).wav"
+                    let finalURL = Recording(
+                        id: UUID(),
+                        timestamp: timestamp,
+                        fileName: fileName,
+                        transcription: text,
+                        duration: 0 // TODO: Get actual duration
+                    ).url
+                    
+                    // Move the temporary recording to final location
+                    try recorder.moveTemporaryRecording(from: tempURL, to: finalURL)
+                    
+                    // Save the recording to store
+                    await recordingStore.addRecording(Recording(
+                        id: UUID(),
+                        timestamp: timestamp,
+                        fileName: fileName,
+                        transcription: text,
+                        duration: 0 // TODO: Get actual duration
+                    ))
+                    
+                    print("Transcription result: \(text)")
+                } catch {
+                    print("Error transcribing audio: \(error)")
+                    try? FileManager.default.removeItem(at: tempURL)
+                }
+                
+                await MainActor.run {
+                    self.state = .idle
+                }
+            }
+        }
+    }
+    
+    func stop() {
+        state = .idle
+        stopBlinking()
+        recorder.cleanupTemporaryRecordings()
+    }
+    
+    private func startBlinking() {
+        blinkTimer = Timer.scheduledTimer(withTimeInterval: 0.8, repeats: true) { [weak self] _ in
+            self?.isBlinking.toggle()
+        }
+    }
+    
+    private func stopBlinking() {
+        blinkTimer?.invalidate()
+        blinkTimer = nil
+        isBlinking = false
+    }
+}
 
 struct ContentView: View {
-    @StateObject private var audioRecorder = AudioRecorder.shared
-    @StateObject private var settings = Settings.shared
+    @StateObject private var viewModel = ContentViewModel()
     @StateObject private var permissionsManager = PermissionsManager()
-    @StateObject private var transcriptionService = TranscriptionService.shared
-    @StateObject private var recordingStore = RecordingStore.shared
     @State private var isSettingsPresented = false
     @State private var searchText = ""
+    @State private var showDeleteConfirmation = false
 
     private var filteredRecordings: [Recording] {
         if searchText.isEmpty {
-            return recordingStore.recordings
+            return viewModel.recordingStore.recordings
         } else {
-            return recordingStore.searchRecordings(query: searchText)
+            return viewModel.recordingStore.searchRecordings(query: searchText)
         }
     }
 
@@ -82,61 +168,86 @@ struct ContentView: View {
                             )
                             .frame(height: 20)
                     }
+                    
                     VStack(spacing: 16) {
-                        if !recordingStore.recordings.isEmpty {
-                            HStack {
-                                Spacer()
+                        // Кнопка записи по центру
+                        Button(action: {
+                            if viewModel.isRecording {
+                                viewModel.startDecoding()
+                            } else {
+                                viewModel.startRecording()
+                            }
+                        }) {
+                            MainRecordButton(isRecording: viewModel.isRecording)
+                        }
+                        .buttonStyle(.plain)
+                        .disabled(viewModel.transcriptionService.isLoading)
+                        .padding(.top, 24)
+                        .padding(.bottom, 16)
+                        
+                        // Нижняя панель с подсказкой и кнопками управления
+                        HStack {
+                            VStack(alignment: .leading, spacing: 8) {
+                                // Подсказка о шорткате
+                                HStack(spacing: 6) {
+                                    if let shortcut = KeyboardShortcuts.getShortcut(for: .toggleRecord) {
+                                        Text(shortcut.description)
+                                            .font(.caption)
+                                            .foregroundColor(.secondary)
+                                    }
+                                    Text("to show mini recorder")
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                }
+                                .padding(.leading, 4)
+                                
+                                // Подсказка о drag-n-drop
+                                HStack(spacing: 6) {
+                                    Image(systemName: "arrow.down.doc.fill")
+                                        .foregroundColor(.secondary)
+                                        .imageScale(.medium)
+                                    Text("Drop audio file here to transcribe")
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                }
+                                .padding(.leading, 4)
+                            }
+                            
+                            Spacer()
+                            
+                            // Кнопки управления
+                            if !viewModel.recordingStore.recordings.isEmpty {
                                 Button(action: {
-                                    recordingStore.deleteAllRecordings()
+                                    showDeleteConfirmation = true
                                 }) {
                                     Text("Clear All")
-                                        .foregroundColor(.red)
                                 }
                                 .buttonStyle(.plain)
+                                .padding(.trailing, 16)
+                                .confirmationDialog(
+                                    "Delete All Recordings",
+                                    isPresented: $showDeleteConfirmation,
+                                    titleVisibility: .visible
+                                ) {
+                                    Button("Delete All", role: .destructive) {
+                                        viewModel.recordingStore.deleteAllRecordings()
+                                    }
+                                    Button("Cancel", role: .cancel) {}
+                                } message: {
+                                    Text("Are you sure you want to delete all recordings? This action cannot be undone.")
+                                }
+                                .interactiveDismissDisabled()
 
-                                Button(action: {
+                              
+                            }
+                              Button(action: {
                                     isSettingsPresented.toggle()
                                 }) {
                                     Image(systemName: "gear")
                                         .font(.title2)
                                 }
                                 .buttonStyle(.plain)
-                            }
-                            .padding([.horizontal, .top])
                         }
-
-                        if audioRecorder.isRecording {
-                            Text(transcriptionService.currentSegment)
-                                .font(.body)
-                                .foregroundColor(.secondary)
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                                .padding()
-                                .background(Color.gray.opacity(0.1))
-                                .cornerRadius(10)
-                        }
-
-                        Button(action: {
-                            let viewModel = IndicatorWindowManager.shared.show()
-                            viewModel.startRecording()
-
-                            if audioRecorder.isRecording {
-                                viewModel.startDecoding()
-                                transcriptionService.stopTranscribing()
-                            } else {
-                                audioRecorder.startRecording()
-                                transcriptionService.startRealTimeTranscription(settings: settings)
-                            }
-                        }) {
-                            Image(
-                                systemName: audioRecorder.isRecording
-                                    ? "stop.circle.fill" : "record.circle.fill"
-                            )
-                            .font(.system(size: 64))
-                            .foregroundColor(audioRecorder.isRecording ? .red : .accentColor)
-                            .contentTransition(.symbolEffect(.replace))
-                        }
-                        .buttonStyle(.plain)
-                        .disabled(transcriptionService.isLoading)
                     }
                     .padding()
                 }
@@ -145,7 +256,7 @@ struct ContentView: View {
         .frame(minWidth: 400, idealWidth: 400)
         .background(Color(NSColor.windowBackgroundColor))
         .overlay {
-            if transcriptionService.isLoading {
+            if viewModel.transcriptionService.isLoading {
                 ZStack {
                     Color.black.opacity(0.3)
                     VStack(spacing: 16) {
@@ -161,7 +272,7 @@ struct ContentView: View {
         }
         .fileDropHandler()
         .sheet(isPresented: $isSettingsPresented) {
-            SettingsView(settings: settings)
+            SettingsView(settings: viewModel.settings)
         }
         .onAppear {
             if UserDefaults.standard.string(forKey: "selectedModelPath") == nil {
@@ -385,6 +496,47 @@ struct TranscriptionView: View {
                 .padding(.bottom, 8)
             }
         }
+    }
+}
+
+struct MainRecordButton: View {
+    let isRecording: Bool
+    
+    var body: some View {
+        Circle()
+            .fill(
+                LinearGradient(
+                    colors: [
+                        isRecording ? Color.red.opacity(0.8) : Color.white.opacity(0.8),
+                        isRecording ? Color.red : Color.white.opacity(0.9)
+                    ],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+            )
+            .frame(width: 48, height: 48)
+            .shadow(
+                color: isRecording ? .red.opacity(0.5) : .white.opacity(0.3),
+                radius: 12,
+                x: 0,
+                y: 0
+            )
+            .overlay {
+                Circle()
+                    .stroke(
+                        LinearGradient(
+                            colors: [
+                                isRecording ? .red.opacity(0.6) : .white.opacity(0.6),
+                                isRecording ? .red.opacity(0.3) : .white.opacity(0.3)
+                            ],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        ),
+                        lineWidth: 1
+                    )
+            }
+            .scaleEffect(isRecording ? 0.9 : 1.0)
+            .animation(.spring(response: 0.3, dampingFraction: 0.6), value: isRecording)
     }
 }
 
