@@ -14,21 +14,16 @@ class OnboardingViewModel: ObservableObject {
             AppPreferences.shared.whisperLanguage = selectedLanguage
         }
     }
-    @Published var selectedModel: DownloadableModel? {
-        didSet {
-            if let model = selectedModel, model.isDownloaded {
-                let modelPath = modelManager.modelsDirectory.appendingPathComponent(model.name).path
-                AppPreferences.shared.selectedModelPath = modelPath
-            }
-        }
-    }
+    @Published var selectedModel: DownloadableModel? 
     @Published var models: [DownloadableModel]
     @Published var isDownloadingAny: Bool = false
 
     private let modelManager = WhisperModelManager.shared
 
     init() {
-        self.selectedLanguage = LanguageUtil.getSystemLanguage()
+        let systemLanguage = LanguageUtil.getSystemLanguage()
+        AppPreferences.shared.whisperLanguage = systemLanguage
+        self.selectedLanguage = systemLanguage
         self.models = []
         initializeModels()
         
@@ -60,7 +55,10 @@ class OnboardingViewModel: ObservableObject {
             }
 
             // Start the download with progress updates
-            try await modelManager.downloadModel(url: model.url, name: model.name) { [weak self] progress in
+
+            let filename = model.url.lastPathComponent
+
+            try await modelManager.downloadModel(url: model.url, name: filename) { [weak self] progress in
 
                 DispatchQueue.main.async {
                     self?.models[modelIndex].downloadProgress = progress
@@ -68,8 +66,9 @@ class OnboardingViewModel: ObservableObject {
                         self?.models[modelIndex].isDownloaded = true
                         self?.isDownloadingAny = false
                         // Update the model path after successful download
-                        if let modelPath = self?.modelManager.modelsDirectory.appendingPathComponent(model.name).path {
+                        if let modelPath = self?.modelManager.modelsDirectory.appendingPathComponent(filename).path {
                             AppPreferences.shared.selectedModelPath = modelPath
+                            print("Model path after download: \(modelPath)")
                         }
                     }
                 }
@@ -82,11 +81,6 @@ class OnboardingViewModel: ObservableObject {
             isDownloadingAny = false
             throw error
         }
-    }
-
-    func setLanguage(_ language: String) {
-        selectedLanguage = language
-        AppPreferences.shared.whisperLanguage = language
     }
 }
 
@@ -275,6 +269,13 @@ struct DownloadableItemView: View {
                     Text(model.sizeString)
                         .font(.subheadline)
                         .foregroundColor(.gray)
+                    
+                    if model.name == "Turbro V3 large" {
+                        Text("Recommended!")
+                            .font(.caption)
+                            .foregroundColor(.green)
+                            .padding(.top, 2)
+                    }
                 }
 
                 Spacer()

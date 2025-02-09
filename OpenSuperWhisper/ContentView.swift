@@ -95,14 +95,6 @@ class ContentViewModel: ObservableObject {
         blinkTimer = nil
         isBlinking = false
     }
-
-    private func checkModelAndShowOnboarding() {
-//        let defaultModel = WhisperModelManager.shared.defaultModel
-//        if AppPreferences.shared.selectedModelPath == nil {
-//            showOnboarding = true
-//            AppPreferences.shared.selectedModelPath = defaultModel.path
-//        }
-    }
 }
 
 struct ContentView: View {
