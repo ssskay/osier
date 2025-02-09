@@ -9,7 +9,11 @@ import Foundation
 import SwiftUI
 
 class OnboardingViewModel: ObservableObject {
-    @Published var selectedLanguage: String
+    @Published var selectedLanguage: String { 
+        didSet {
+            AppPreferences.shared.whisperLanguage = selectedLanguage
+        }
+    }
     @Published var selectedModel: DownloadableModel? {
         didSet {
             if let model = selectedModel, model.isDownloaded {
@@ -24,9 +28,13 @@ class OnboardingViewModel: ObservableObject {
     private let modelManager = WhisperModelManager.shared
 
     init() {
-        self.selectedLanguage = AppPreferences.shared.whisperLanguage
+        self.selectedLanguage = LanguageUtil.getSystemLanguage()
         self.models = []
         initializeModels()
+        
+        if let defaultModel = models.first(where: { $0.name == "Turbro V3 large" }) {
+            self.selectedModel = defaultModel
+        }
     }
 
     private func initializeModels() {
@@ -53,8 +61,6 @@ class OnboardingViewModel: ObservableObject {
 
             // Start the download with progress updates
             try await modelManager.downloadModel(url: model.url, name: model.name) { [weak self] progress in
-
-                print("Downloading model: \(model.name) with progress: \(progress)")
 
                 DispatchQueue.main.async {
                     self?.models[modelIndex].downloadProgress = progress
@@ -125,7 +131,6 @@ struct OnboardingView: View {
                 ModelListView(viewModel: viewModel)
                     .frame(width: 410, height: .infinity)
 
-                // Next button at right bottom
                 HStack {
                     Spacer()
                     Button(action: {
@@ -209,29 +214,30 @@ struct DownloadableModel: Identifiable {
 }
 
 let availableModels = [
+
     DownloadableModel(
-        name: "ggml-large-v3-turbo-q5_0.bin",
+        name: "Turbro V3 large",
+        isDownloaded: false,
+        url: URL(string: "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-large-v3-turbo.bin?download=true")!,
+        size: 1624,
+        speedRate: 60,
+        accuracyRate: 100
+    ),
+    DownloadableModel(
+        name: "Turbro V3 medium",
+        isDownloaded: false,
+        url: URL(string: "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-large-v3-turbo-q8_0.bin?download=true")!,
+        size: 874,
+        speedRate: 70,
+        accuracyRate: 70
+    ),
+    DownloadableModel(
+        name: "Turbro V3 small",
         isDownloaded: false,
         url: URL(string: "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-large-v3-turbo-q5_0.bin?download=true")!,
         size: 574,
         speedRate: 100,
-        accuracyRate: 100
-    ),
-    DownloadableModel(
-        name: "ggml-large-v3-turbo-q8_0.bin",
-        isDownloaded: false,
-        url: URL(string: "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-large-v3-turbo-q8_0.bin?download=true")!,
-        size: 874,
-        speedRate: 100,
-        accuracyRate: 100
-    ),
-    DownloadableModel(
-        name: "ggml-large-v3-turbo.bin",
-        isDownloaded: false,
-        url: URL(string: "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-large-v3-turbo.bin?download=true")!,
-        size: 1624,
-        speedRate: 100,
-        accuracyRate: 100
+        accuracyRate: 60
     )
 ]
 
@@ -306,7 +312,7 @@ struct ModelListView: View {
     @ObservedObject var viewModel: OnboardingViewModel
 
     var body: some View {
-        List {
+        VStack {
             ForEach($viewModel.models) { $model in
                 DownloadableItemView(model: $model)
                     .environmentObject(viewModel)

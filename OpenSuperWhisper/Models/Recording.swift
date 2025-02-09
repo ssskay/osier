@@ -1,12 +1,16 @@
 import Foundation
 import GRDB
 
-struct Recording: Identifiable, Codable, FetchableRecord, PersistableRecord {
+struct Recording: Identifiable, Codable, FetchableRecord, PersistableRecord, Equatable {
     let id: UUID
     let timestamp: Date
     let fileName: String
     let transcription: String
     let duration: TimeInterval
+
+    static func == (lhs: Recording, rhs: Recording) -> Bool {
+        return lhs.id == rhs.id
+    }
 
     var url: URL {
         let applicationSupport = FileManager.default.urls(

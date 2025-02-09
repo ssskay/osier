@@ -9,42 +9,32 @@ class WhisperDownloadDelegate: NSObject, URLSessionTaskDelegate, URLSessionDownl
     init(progressCallback: @escaping (Double) -> Void) {
         self.progressCallback = progressCallback
         super.init()
-        print("WhisperDownloadDelegate initialized")
     }
     
     func urlSession(_ session: URLSession, downloadTask: URLSessionDownloadTask, didFinishDownloadingTo location: URL) {
-        print("Download finished, file temporarily stored at: \(location.path)")
         completionHandler?(location, nil)
     }
     
     func urlSession(_ session: URLSession, downloadTask: URLSessionDownloadTask, didWriteData bytesWritten: Int64, totalBytesWritten: Int64, totalBytesExpectedToWrite: Int64) {
-        print("didWriteData called - bytesWritten: \(bytesWritten), totalBytesWritten: \(totalBytesWritten), expectedToWrite: \(totalBytesExpectedToWrite)")
       
         if expectedContentLength == 0 {
             expectedContentLength = totalBytesExpectedToWrite
-            print("Set expectedContentLength to: \(expectedContentLength)")
         }
         let progress = Double(totalBytesWritten) / Double(expectedContentLength)
-        print("Calculated progress: \(progress)")
         
         DispatchQueue.main.async { [weak self] in
             self?.progressCallback(progress)
-            print("Progress callback executed on main queue: \(progress)")
         }
 
-        print("Downloading model: \(downloadTask.originalRequest?.url?.absoluteString ?? "Unknown") with progress: \(progress)")
     }
 
     func urlSession(_ session: URLSession, downloadTask: URLSessionDownloadTask, didResumeAtOffset fileOffset: Int64, expectedTotalBytes: Int64) {
-        print("Download resumed at offset: \(fileOffset) of \(expectedTotalBytes)")
     }
     
     func urlSession(_ session: URLSession, task: URLSessionTask, didCompleteWithError error: Error?) {
         if let error = error {
-            print("Download delegate received error: \(error)")
             completionHandler?(nil, error)
         } else {
-            print("Download delegate completed successfully")
         }
     }
 }
@@ -57,8 +47,6 @@ class WhisperModelManager {
     var modelsDirectory: URL {
         let applicationSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
         let modelsDirectory = applicationSupport.appendingPathComponent(Bundle.main.bundleIdentifier!).appendingPathComponent(modelsDirectoryName)
-        
-        print("Models directory: \(modelsDirectory.path)")
         return modelsDirectory
     }
     

@@ -86,6 +86,12 @@ class AudioRecorder: NSObject, ObservableObject {
     }
     
     func moveTemporaryRecording(from tempURL: URL, to finalURL: URL) throws {
+
+        let directory = finalURL.deletingLastPathComponent()
+        if !FileManager.default.fileExists(atPath: directory.path) {
+            try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        }
+
         if FileManager.default.fileExists(atPath: finalURL.path) {
             try FileManager.default.removeItem(at: finalURL)
         }

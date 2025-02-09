@@ -29,7 +29,7 @@ final class AppPreferences {
     @OptionalUserDefault(key: "selectedModelPath")
     var selectedModelPath: String?
     
-    @UserDefault(key: "whisperLanguage", defaultValue: "auto")
+    @UserDefault(key: "whisperLanguage", defaultValue: "en")
     var whisperLanguage: String
     
     // Transcription settings

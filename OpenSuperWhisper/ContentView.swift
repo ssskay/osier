@@ -153,15 +153,61 @@ struct ContentView: View {
                     .padding([.horizontal, .top])
 
                     ScrollView(showsIndicators: false) {
-                        LazyVStack(spacing: 8) {
-                            ForEach(filteredRecordings) { recording in
-                                RecordingRow(recording: recording)
-                                    .transition(.scale.combined(with: .opacity))
+                        if filteredRecordings.isEmpty {
+                            VStack(spacing: 16) {
+                                if !searchText.isEmpty {
+                                    // Show "no results" for search
+                                    Image(systemName: "magnifyingglass")
+                                        .font(.system(size: 40))
+                                        .foregroundColor(.secondary)
+                                        .padding(.top, 40)
+                                    
+                                    Text("No results found")
+                                        .font(.headline)
+                                        .foregroundColor(.secondary)
+                                    
+                                    Text("Try different search terms")
+                                        .font(.subheadline)
+                                        .foregroundColor(.secondary)
+                                        .multilineTextAlignment(.center)
+                                        .padding(.horizontal)
+                                } else {
+                                    // Show "start recording" tip
+                                    Image(systemName: "arrow.down.circle")
+                                        .font(.system(size: 40))
+                                        .foregroundColor(.secondary)
+                                        .padding(.top, 40)
+                                    
+                                    Text("No recordings yet")
+                                        .font(.headline)
+                                        .foregroundColor(.secondary)
+                                    
+                                    Text("Tap the record button below to get started")
+                                        .font(.subheadline)
+                                        .foregroundColor(.secondary)
+                                        .multilineTextAlignment(.center)
+                                        .padding(.horizontal)
+                                }
                             }
+                            .frame(maxWidth: .infinity)
+                            .transition(.opacity.combined(with: .move(edge: .bottom)))
+                        } else {
+                            LazyVStack(spacing: 8) {
+                                ForEach(filteredRecordings) { recording in
+                                    RecordingRow(recording: recording)
+                                        .transition(.asymmetric(
+                                            insertion: .scale.combined(with: .opacity),
+                                            removal: .opacity.combined(with: .scale(scale: 0.8))
+                                        ))
+                                }
+                            }
+                            .padding(.horizontal)
+                            .padding(.top, 16)
+                            .transition(.opacity.combined(with: .move(edge: .top)))
                         }
-                        .padding(.horizontal)
-                        .padding(.top, 16)
                     }
+                    .animation(.spring(response: 0.3, dampingFraction: 0.8), value: filteredRecordings)
+                    .animation(.spring(response: 0.3, dampingFraction: 0.8), value: searchText)
                     .overlay(alignment: .top) {
                         Rectangle()
                             .fill(
