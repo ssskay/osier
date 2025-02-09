@@ -9,12 +9,13 @@ import Foundation
 import SwiftUI
 
 class OnboardingViewModel: ObservableObject {
-    @Published var selectedLanguage: String { 
+    @Published var selectedLanguage: String {
         didSet {
             AppPreferences.shared.whisperLanguage = selectedLanguage
         }
     }
-    @Published var selectedModel: DownloadableModel? 
+
+    @Published var selectedModel: DownloadableModel?
     @Published var models: [DownloadableModel]
     @Published var isDownloadingAny: Bool = false
 
@@ -26,7 +27,7 @@ class OnboardingViewModel: ObservableObject {
         self.selectedLanguage = systemLanguage
         self.models = []
         initializeModels()
-        
+
         if let defaultModel = models.first(where: { $0.name == "Turbro V3 large" }) {
             self.selectedModel = defaultModel
         }
@@ -41,9 +42,10 @@ class OnboardingViewModel: ObservableObject {
         }
     }
 
+    @MainActor
     func downloadSelectedModel() async throws {
         guard let model = selectedModel, !model.isDownloaded else { return }
-        
+
         guard !isDownloadingAny else { return }
         isDownloadingAny = true
 
@@ -90,7 +92,7 @@ struct OnboardingView: View {
     @State private var isDownloading = false
     @State private var showError = false
     @State private var errorMessage = ""
-    
+
     var body: some View {
         ZStack {
             VStack(alignment: .leading) {
@@ -118,12 +120,12 @@ struct OnboardingView: View {
 
                     Text("The model is designed to transcribe audio into text. It is a powerful tool that can be used to transcribe audio into text.")
                         .font(.subheadline)
+                        .fixedSize(horizontal: false, vertical: true)
                         .padding(.top, 8)
                 }
                 .padding()
 
                 ModelListView(viewModel: viewModel)
-                    .frame(width: 410, height: .infinity)
 
                 HStack {
                     Spacer()
@@ -139,7 +141,7 @@ struct OnboardingView: View {
             .padding()
             .frame(width: 450, height: 650)
             .alert("Download Error", isPresented: $showError) {
-                Button("OK", role: .cancel) { }
+                Button("OK", role: .cancel) {}
             } message: {
                 Text(errorMessage)
             }
@@ -148,7 +150,7 @@ struct OnboardingView: View {
 
     private func handleNextButtonTap() {
         guard let selectedModel = viewModel.selectedModel else { return }
-        
+
         if selectedModel.isDownloaded {
             // If model is already downloaded, proceed immediately
             appState.hasCompletedOnboarding = true
@@ -246,7 +248,6 @@ struct DownloadableItemView: View {
                 VStack(alignment: .leading, spacing: 2) {
                     HStack(spacing: 12) {
                         Text(model.name)
-                            .frame(width: .infinity)
                             .font(.headline)
 
                         Spacer()
@@ -269,7 +270,7 @@ struct DownloadableItemView: View {
                     Text(model.sizeString)
                         .font(.subheadline)
                         .foregroundColor(.gray)
-                    
+
                     if model.name == "Turbro V3 large" {
                         Text("Recommended!")
                             .font(.caption)

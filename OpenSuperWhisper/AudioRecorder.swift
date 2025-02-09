@@ -5,11 +5,13 @@ class AudioRecorder: NSObject, ObservableObject {
     @Published var isRecording = false
     @Published var isPlaying = false
     @Published var currentlyPlayingURL: URL?
+    @Published var canRecord = false
     
     private var audioRecorder: AVAudioRecorder?
     private var audioPlayer: AVAudioPlayer?
     private let temporaryDirectory: URL
     private var currentRecordingURL: URL?
+    private var notificationObserver: Any?
 
     // MARK: - Singleton Instance
 
@@ -21,6 +23,50 @@ class AudioRecorder: NSObject, ObservableObject {
         
         super.init()
         createTemporaryDirectoryIfNeeded()
+        setup()
+    }
+    
+    deinit {
+        if let observer = notificationObserver {
+            NotificationCenter.default.removeObserver(observer)
+        }
+    }
+    
+    private func setup() {
+        // Check for audio input devices
+        let discoverySession = AVCaptureDevice.DiscoverySession(
+            deviceTypes: [.microphone, .external],
+            mediaType: .audio,
+            position: .unspecified
+        )
+        canRecord = !discoverySession.devices.isEmpty
+        
+        // Add observer for device connection/disconnection
+        notificationObserver = NotificationCenter.default.addObserver(
+            forName: .AVCaptureDeviceWasConnected,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            let session = AVCaptureDevice.DiscoverySession(
+                deviceTypes: [.microphone, .external],
+                mediaType: .audio,
+                position: .unspecified
+            )
+            self?.canRecord = !session.devices.isEmpty
+        }
+        
+        NotificationCenter.default.addObserver(
+            forName: .AVCaptureDeviceWasDisconnected,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            let session = AVCaptureDevice.DiscoverySession(
+                deviceTypes: [.microphone, .external],
+                mediaType: .audio,
+                position: .unspecified
+            )
+            self?.canRecord = !session.devices.isEmpty
+        }
     }
     
     private func createTemporaryDirectoryIfNeeded() {
@@ -32,6 +78,11 @@ class AudioRecorder: NSObject, ObservableObject {
     }
     
     func startRecording() {
+        guard canRecord else {
+            print("Cannot start recording - no audio input available")
+            return
+        }
+        
         if isRecording {
             print("stop recording while recording")
             _ = stopRecording()

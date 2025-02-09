@@ -96,22 +96,9 @@
 		CE84DF792D5578BE00C54EA6 /* jfk.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = jfk.wav; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
-/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
-		CE1EFDD62D58CB78009851D2 /* Exceptions for "OpenSuperWhisper" folder in "OpenSuperWhisper" target */ = {
-			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
-			membershipExceptions = (
-				requirements.txt,
-			);
-			target = CE57B0272D52C7BB00929AF3 /* OpenSuperWhisper */;
-		};
-/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
-
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		CE57B02A2D52C7BB00929AF3 /* OpenSuperWhisper */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			exceptions = (
-				CE1EFDD62D58CB78009851D2 /* Exceptions for "OpenSuperWhisper" folder in "OpenSuperWhisper" target */,
-			);
 			path = OpenSuperWhisper;
 			sourceTree = "<group>";
 		};
@@ -662,7 +649,7 @@
 					"$(inherited)",
 					"$(PROJECT_DIR)",
 				);
-				MACOSX_DEPLOYMENT_TARGET = 14.6;
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
 				MARKETING_VERSION = 1.0;
 				OTHER_LDFLAGS = (
 					"-lwhisper",
@@ -716,7 +703,7 @@
 					"$(PROJECT_DIR)",
 				);
 				LLVM_LTO = YES;
-				MACOSX_DEPLOYMENT_TARGET = 14.6;
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
 				MARKETING_VERSION = 1.0;
 				OTHER_LDFLAGS = (
 					"-lwhisper",

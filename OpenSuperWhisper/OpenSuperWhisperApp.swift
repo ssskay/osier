@@ -21,10 +21,12 @@ struct OpenSuperWhisperApp: App {
                     ContentView()
                 }
             }
-            .frame(minWidth: 400, minHeight: 500)
+            .frame(width: 450, height: 650)
             .environmentObject(appState)
         }
         .windowStyle(.hiddenTitleBar)
+        .defaultSize(width: 450, height: 650)
+        .windowResizability(.contentSize)
         .commands {
             CommandGroup(replacing: .newItem) {}
         }

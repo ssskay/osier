@@ -10,6 +10,7 @@ import KeyboardShortcuts
 import SwiftUI
 import UniformTypeIdentifiers
 
+@MainActor
 class ContentViewModel: ObservableObject {
     @Published var state: RecordingState = .idle
     @Published var isBlinking = false

@@ -1,6 +1,7 @@
 import AVFoundation
 import Foundation
 
+@MainActor
 class TranscriptionService: ObservableObject {
     static let shared = TranscriptionService()
     
@@ -54,6 +55,19 @@ class TranscriptionService: ObservableObject {
     }
     
     private func setupAudioEngine() {
+        // Check for audio input devices first
+        let discoverySession = AVCaptureDevice.DiscoverySession(
+            deviceTypes: [.microphone, .external],
+            mediaType: .audio,
+            position: .unspecified
+        )
+        
+        // Don't setup if no input devices available
+        guard !discoverySession.devices.isEmpty else {
+            print("No audio input devices available")
+            return
+        }
+        
         audioEngine = AVAudioEngine()
         inputNode = audioEngine?.inputNode
         
