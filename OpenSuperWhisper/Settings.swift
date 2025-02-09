@@ -202,34 +202,34 @@ struct SettingsView: View {
     
     var body: some View {
         TabView(selection: $selectedTab) {
+
+             // Shortcut Settings
+            shortcutSettings
+                .tabItem {
+                    Label("Shortcuts", systemImage: "command")
+                }
+                .tag(0)
             // Model Settings
             modelSettings
                 .tabItem {
                     Label("Model", systemImage: "cpu")
                 }
-                .tag(0)
+                .tag(1)
             
             // Transcription Settings
             transcriptionSettings
                 .tabItem {
                     Label("Transcription", systemImage: "text.bubble")
                 }
-                .tag(1)
+                .tag(2)
             
             // Advanced Settings
             advancedSettings
                 .tabItem {
                     Label("Advanced", systemImage: "gear")
                 }
-                .tag(2)
-            
-            // Shortcut Settings
-            shortcutSettings
-                .tabItem {
-                    Label("Shortcuts", systemImage: "command")
-                }
                 .tag(3)
-        }
+            }
         .padding()
         .frame(width: 500, height: 400)
         .toolbar {

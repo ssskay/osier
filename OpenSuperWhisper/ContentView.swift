@@ -23,7 +23,7 @@ class ContentViewModel: ObservableObject {
     var isRecording: Bool {
         recorder.isRecording
     }
-    
+
     func startRecording() {
         state = .recording
         startBlinking()
@@ -153,11 +153,11 @@ struct ContentView: View {
                                         .font(.system(size: 40))
                                         .foregroundColor(.secondary)
                                         .padding(.top, 40)
-                                    
+
                                     Text("No results found")
                                         .font(.headline)
                                         .foregroundColor(.secondary)
-                                    
+
                                     Text("Try different search terms")
                                         .font(.subheadline)
                                         .foregroundColor(.secondary)
@@ -169,23 +169,23 @@ struct ContentView: View {
                                         .font(.system(size: 40))
                                         .foregroundColor(.secondary)
                                         .padding(.top, 40)
-                                    
+
                                     Text("No recordings yet")
                                         .font(.headline)
                                         .foregroundColor(.secondary)
-                                    
+
                                     Text("Tap the record button below to get started")
                                         .font(.subheadline)
                                         .foregroundColor(.secondary)
                                         .multilineTextAlignment(.center)
                                         .padding(.horizontal)
-                                    
+
                                     if let shortcut = KeyboardShortcuts.getShortcut(for: .toggleRecord) {
                                         VStack(spacing: 8) {
                                             Text("Pro Tip:")
                                                 .font(.subheadline)
                                                 .foregroundColor(.secondary)
-                                            
+
                                             HStack(spacing: 4) {
                                                 Text("Press")
                                                     .font(.subheadline)
@@ -200,7 +200,7 @@ struct ContentView: View {
                                                     .font(.subheadline)
                                                     .foregroundColor(.secondary)
                                             }
-                                            
+
                                             Text("to quickly record and paste text")
                                                 .font(.subheadline)
                                                 .foregroundColor(.secondary)
