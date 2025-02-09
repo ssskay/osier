@@ -263,7 +263,10 @@ struct ContentView: View {
         .frame(minWidth: 400, idealWidth: 400)
         .background(Color(NSColor.windowBackgroundColor))
         .overlay {
-            if viewModel.transcriptionService.isLoading {
+            let isPermissionsGranted = permissionsManager.isMicrophonePermissionGranted
+                && permissionsManager.isAccessibilityPermissionGranted
+
+            if viewModel.transcriptionService.isLoading && isPermissionsGranted {
                 ZStack {
                     Color.black.opacity(0.3)
                     VStack(spacing: 16) {
@@ -281,9 +284,6 @@ struct ContentView: View {
         .sheet(isPresented: $isSettingsPresented) {
             SettingsView(settings: viewModel.settings)
         }
-        .onAppear {
-//            checkModelAndShowOnboarding()
-        }
     }
 }
 
@@ -300,7 +300,9 @@ struct PermissionsView: View {
                 isGranted: permissionsManager.isMicrophonePermissionGranted,
                 title: "Microphone Access",
                 description: "Required for audio recording",
-                action: { permissionsManager.openSystemPreferences(for: .microphone) }
+                action: {
+                    permissionsManager.requestMicrophonePermissionOrOpenSystemPreferences()
+                }
             )
 
             PermissionRow(

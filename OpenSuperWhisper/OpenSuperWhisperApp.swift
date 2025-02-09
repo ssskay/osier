@@ -31,9 +31,6 @@ struct OpenSuperWhisperApp: App {
     }
 
     init() {
-        // Request microphone access on app launch
-        AVCaptureDevice.requestAccess(for: .audio) { _ in }
-
 //        if ProcessInfo.processInfo.environment["XCODE_RUNNING_FOR_PREVIEWS"] != nil {
 //            fatalError("LOL")
 //        }
@@ -50,6 +47,6 @@ class AppState: ObservableObject {
     }
 
     init() {
-        self.hasCompletedOnboarding = false // AppPreferences.shared.hasCompletedOnboarding
+        self.hasCompletedOnboarding = AppPreferences.shared.hasCompletedOnboarding
     }
 }

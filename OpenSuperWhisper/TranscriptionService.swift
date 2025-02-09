@@ -26,6 +26,7 @@ class TranscriptionService: ObservableObject {
     }
     
     private func loadModel() {
+        print("Loading model")
         if let modelPath = AppPreferences.shared.selectedModelPath {
             isLoading = true
             DispatchQueue.global(qos: .userInitiated).async { [weak self] in
@@ -33,18 +34,21 @@ class TranscriptionService: ObservableObject {
                 self?.context = MyWhisperContext.initFromFile(path: modelPath, params: params)
                 DispatchQueue.main.async {
                     self?.isLoading = false
+                    print("Model loaded")
                 }
             }
         }
     }
     
     func reloadModel(with path: String) {
+        print("Reloading model")
         isLoading = true
         DispatchQueue.global(qos: .userInitiated).async { [weak self] in
             let params = WhisperContextParams()
             self?.context = MyWhisperContext.initFromFile(path: path, params: params)
             DispatchQueue.main.async {
                 self?.isLoading = false
+                print("Model reloaded")
             }
         }
     }

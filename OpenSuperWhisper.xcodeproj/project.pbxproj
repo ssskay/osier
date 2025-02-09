@@ -30,8 +30,6 @@
 		CE84DF722D55778000C54EA6 /* MetalKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = CE84DF702D55778000C54EA6 /* MetalKit.framework */; };
 		CE84DF742D5577B000C54EA6 /* libggml-blas.a in Frameworks */ = {isa = PBXBuildFile; fileRef = CE84DF732D5577A700C54EA6 /* libggml-blas.a */; };
 		CE84DF762D5577D200C54EA6 /* Accelerate.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = CE84DF752D5577D200C54EA6 /* Accelerate.framework */; };
-		CE84DF782D55789800C54EA6 /* ggml-tiny.en.bin in Resources */ = {isa = PBXBuildFile; fileRef = CE84DF772D55789800C54EA6 /* ggml-tiny.en.bin */; };
-		CE84DF7A2D5578BE00C54EA6 /* jfk.wav in Resources */ = {isa = PBXBuildFile; fileRef = CE84DF792D5578BE00C54EA6 /* jfk.wav */; };
 		CE84E17D2D56550B00C54EA6 /* KeyboardShortcuts in Frameworks */ = {isa = PBXBuildFile; productRef = CE84E17C2D56550B00C54EA6 /* KeyboardShortcuts */; };
 /* End PBXBuildFile section */
 
@@ -98,9 +96,22 @@
 		CE84DF792D5578BE00C54EA6 /* jfk.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = jfk.wav; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		CE1EFDD62D58CB78009851D2 /* Exceptions for "OpenSuperWhisper" folder in "OpenSuperWhisper" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				requirements.txt,
+			);
+			target = CE57B0272D52C7BB00929AF3 /* OpenSuperWhisper */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		CE57B02A2D52C7BB00929AF3 /* OpenSuperWhisper */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				CE1EFDD62D58CB78009851D2 /* Exceptions for "OpenSuperWhisper" folder in "OpenSuperWhisper" target */,
+			);
 			path = OpenSuperWhisper;
 			sourceTree = "<group>";
 		};
@@ -421,8 +432,6 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				CE84DF7A2D5578BE00C54EA6 /* jfk.wav in Resources */,
-				CE84DF782D55789800C54EA6 /* ggml-tiny.en.bin in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -644,9 +653,10 @@
 					"$(PROJECT_DIR)",
 				);
 				INFOPLIST_FILE = "OpenSuperWhisper/OpenSuperWhisper-Info.plist";
-				INFOPLIST_KEY_CFBundleDisplayName = "";
-				INFOPLIST_KEY_LSApplicationCategoryType = "";
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.productivity";
+				INFOPLIST_KEY_NSAppleEventsUsageDescription = "OpenSuperWhisper needs accessibility access to provide system-wide functionality.";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "OpenSuperWhisper needs microphone access to record audio for transcription.";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
@@ -694,9 +704,10 @@
 					"$(PROJECT_DIR)",
 				);
 				INFOPLIST_FILE = "OpenSuperWhisper/OpenSuperWhisper-Info.plist";
-				INFOPLIST_KEY_CFBundleDisplayName = "";
-				INFOPLIST_KEY_LSApplicationCategoryType = "";
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.productivity";
+				INFOPLIST_KEY_NSAppleEventsUsageDescription = "OpenSuperWhisper needs accessibility access to provide system-wide functionality.";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "OpenSuperWhisper needs microphone access to record audio for transcription.";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
