@@ -23,7 +23,7 @@ class ContentViewModel: ObservableObject {
     var isRecording: Bool {
         recorder.isRecording
     }
-
+    
     func startRecording() {
         state = .recording
         startBlinking()
@@ -179,6 +179,34 @@ struct ContentView: View {
                                         .foregroundColor(.secondary)
                                         .multilineTextAlignment(.center)
                                         .padding(.horizontal)
+                                    
+                                    if let shortcut = KeyboardShortcuts.getShortcut(for: .toggleRecord) {
+                                        VStack(spacing: 8) {
+                                            Text("Pro Tip:")
+                                                .font(.subheadline)
+                                                .foregroundColor(.secondary)
+                                            
+                                            HStack(spacing: 4) {
+                                                Text("Press")
+                                                    .font(.subheadline)
+                                                    .foregroundColor(.secondary)
+                                                Text(shortcut.description)
+                                                    .font(.system(size: 16, weight: .medium))
+                                                    .padding(.horizontal, 6)
+                                                    .padding(.vertical, 3)
+                                                    .background(Color.secondary.opacity(0.2))
+                                                    .cornerRadius(6)
+                                                Text("anywhere")
+                                                    .font(.subheadline)
+                                                    .foregroundColor(.secondary)
+                                            }
+                                            
+                                            Text("to quickly record and paste text")
+                                                .font(.subheadline)
+                                                .foregroundColor(.secondary)
+                                        }
+                                        .padding(.top, 16)
+                                    }
                                 }
                             }
                             .frame(maxWidth: .infinity)

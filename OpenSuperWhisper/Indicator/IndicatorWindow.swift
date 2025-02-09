@@ -111,6 +111,10 @@ class IndicatorViewModel: ObservableObject {
         isBlinking = false
     }
 
+    func cancelRecording() {
+        recorder.cancelRecording()
+    }
+
     @MainActor
     func hideWithAnimation() async {
         await withCheckedContinuation { continuation in

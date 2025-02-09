@@ -85,6 +85,16 @@ class AudioRecorder: NSObject, ObservableObject {
         return url
     }
     
+    func cancelRecording() {
+        audioRecorder?.stop()
+        isRecording = false
+        
+        if let url = currentRecordingURL {
+            try? FileManager.default.removeItem(at: url)
+        }
+        currentRecordingURL = nil
+    }
+    
     func moveTemporaryRecording(from tempURL: URL, to finalURL: URL) throws {
 
         let directory = finalURL.deletingLastPathComponent()

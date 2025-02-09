@@ -75,7 +75,11 @@ class IndicatorWindowManager {
     }
     
     func stopForce() {
-        
+        viewModel?.cancelRecording()
+        hide()
+    }
+
+    func hide() {
         KeyboardShortcuts.disable(.escape)
         
         Task.detached { [weak self] in
@@ -95,6 +99,6 @@ class IndicatorWindowManager {
 extension IndicatorWindowManager: IndicatorViewDelegate {
     
     func didFinishDecoding() {
-        stopForce()
+        hide()
     }
 }
