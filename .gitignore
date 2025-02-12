@@ -107,3 +107,12 @@ tools/
 SourcePackages
 .build
 default.profraw
+
+# Fastlane
+fastlane/.env
+fastlane/report.xml
+fastlane/Error*.png
+fastlane/Preview.html
+fastlane/screenshots
+fastlane/test_output
+fastlane/build

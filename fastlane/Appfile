@@ -1,0 +1,8 @@
+# app_identifier("[[APP_IDENTIFIER]]") # The bundle identifier of your app
+# apple_id("[[APPLE_ID]]") # Your Apple Developer Portal username
+
+app_identifier("ru.starmel.OpenSuperWhisper") # The bundle identifier of your app
+team_id "8LLDD7HWZK"
+
+# For more information about the Appfile, see:
+#     https://docs.fastlane.tools/advanced/#appfile
