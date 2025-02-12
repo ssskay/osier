@@ -572,14 +572,19 @@ struct TranscriptionView: View {
 
 struct MainRecordButton: View {
     let isRecording: Bool
+    @Environment(\.colorScheme) private var colorScheme
+    
+    private var buttonColor: Color {
+        colorScheme == .dark ? .white : .gray
+    }
 
     var body: some View {
         Circle()
             .fill(
                 LinearGradient(
                     colors: [
-                        isRecording ? Color.red.opacity(0.8) : Color.white.opacity(0.8),
-                        isRecording ? Color.red : Color.white.opacity(0.9)
+                        isRecording ? Color.red.opacity(0.8) : buttonColor.opacity(0.8),
+                        isRecording ? Color.red : buttonColor.opacity(0.9)
                     ],
                     startPoint: .topLeading,
                     endPoint: .bottomTrailing
@@ -587,7 +592,7 @@ struct MainRecordButton: View {
             )
             .frame(width: 48, height: 48)
             .shadow(
-                color: isRecording ? .red.opacity(0.5) : .white.opacity(0.3),
+                color: isRecording ? .red.opacity(0.5) : buttonColor.opacity(0.3),
                 radius: 12,
                 x: 0,
                 y: 0
@@ -597,8 +602,8 @@ struct MainRecordButton: View {
                     .stroke(
                         LinearGradient(
                             colors: [
-                                isRecording ? .red.opacity(0.6) : .white.opacity(0.6),
-                                isRecording ? .red.opacity(0.3) : .white.opacity(0.3)
+                                isRecording ? .red.opacity(0.6) : buttonColor.opacity(0.6),
+                                isRecording ? .red.opacity(0.3) : buttonColor.opacity(0.3)
                             ],
                             startPoint: .topLeading,
                             endPoint: .bottomTrailing
