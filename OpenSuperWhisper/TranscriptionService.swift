@@ -70,142 +70,6 @@ class TranscriptionService: ObservableObject {
         
         audioEngine = AVAudioEngine()
         inputNode = audioEngine?.inputNode
-        
-        guard let inputNode = inputNode else { return }
-        
-        // Get the native format of the input node
-        let inputFormat = inputNode.inputFormat(forBus: 0)
-        
-        // Create an audio converter format for our desired output
-        let converterFormat = AVAudioFormat(commonFormat: .pcmFormatFloat32,
-                                            sampleRate: sampleRate,
-                                            channels: 1,
-                                            interleaved: false)!
-        
-        // Install tap on the input node with its native format
-        inputNode.installTap(onBus: 0, bufferSize: UInt32(bufferSize), format: inputFormat) { [weak self] buffer, _ in
-            guard let self = self else { return }
-            
-            // Convert the buffer to the desired format
-            let frameCount = AVAudioFrameCount(buffer.frameLength)
-            guard let convertedBuffer = AVAudioPCMBuffer(pcmFormat: converterFormat,
-                                                         frameCapacity: frameCount) else { return }
-            
-            let inputBlock: AVAudioConverterInputBlock = { _, outStatus in
-                outStatus.pointee = .haveData
-                return buffer
-            }
-            
-            var error: NSError?
-            guard let converter = AVAudioConverter(from: inputFormat, to: converterFormat) else { return }
-            
-            converter.convert(to: convertedBuffer,
-                              error: &error,
-                              withInputFrom: inputBlock)
-            
-            if let error = error {
-                print("Conversion error: \(error)")
-                return
-            }
-            
-            // Get the channel data as float array
-            guard let channelData = convertedBuffer.floatChannelData?[0] else { return }
-            let frames = Array(UnsafeBufferPointer(start: channelData,
-                                                   count: Int(convertedBuffer.frameLength)))
-            
-            self.audioBuffer.append(contentsOf: frames)
-            
-            // Process buffer when it reaches a certain size
-            if self.audioBuffer.count >= Int(self.sampleRate * 3) { // Process every 3 seconds
-                self.processAudioBuffer()
-            }
-        }
-    }
-    
-    private func processAudioBuffer() {
-        guard let context = context,
-              let settings = settings,
-              !isProcessing else { return }
-        
-        audioBufferLock.lock()
-        defer { audioBufferLock.unlock() }
-        
-        // Check if we have enough samples
-        guard audioBuffer.count >= Int(sampleRate * 3) else { return }
-        
-        isProcessing = true
-        
-        // Create a local copy of the samples we want to process
-        let samples = Array(audioBuffer.prefix(Int(sampleRate * 3)))
-        audioBuffer.removeFirst(min(samples.count, audioBuffer.count))
-        
-        Task {
-            defer { isProcessing = false }
-            
-            // Process the audio with Whisper
-            let nThreads = 4
-            
-            // Create a contiguous array of samples
-            let sampleCount = samples.count
-            let samplePtr = UnsafeMutablePointer<Float>.allocate(capacity: sampleCount)
-            defer { samplePtr.deallocate() }
-            
-            // Copy samples to the contiguous memory
-            samples.withUnsafeBufferPointer { buffer in
-                samplePtr.initialize(from: buffer.baseAddress!, count: sampleCount)
-            }
-            
-            // Process with error handling
-            guard context.pcmToMel(samples: Array(UnsafeBufferPointer(start: samplePtr, count: sampleCount)),
-                                   nSamples: sampleCount,
-                                   nThreads: nThreads)
-            else {
-                print("Failed to convert PCM to MEL")
-                return
-            }
-            
-            guard context.encode(offset: 0, nThreads: nThreads) else {
-                print("Failed to encode audio")
-                return
-            }
-            
-            var params = WhisperFullParams()
-            // Use the same parameters as in file transcription
-            params.strategy = settings.viewModel.useBeamSearch ? .beamSearch : .greedy
-            params.nThreads = Int32(nThreads)
-            params.noTimestamps = !settings.viewModel.showTimestamps
-            params.suppressBlank = settings.viewModel.suppressBlankAudio
-            params.translate = settings.viewModel.translateToEnglish
-            params.language = settings.viewModel.selectedLanguage != "auto" ? settings.viewModel.selectedLanguage : nil
-            params.detectLanguage = settings.viewModel.selectedLanguage == "auto"
-            params.temperature = Float(settings.viewModel.temperature)
-            params.noSpeechThold = Float(settings.viewModel.noSpeechThreshold)
-            params.initialPrompt = settings.viewModel.initialPrompt.isEmpty ? nil : settings.viewModel.initialPrompt
-            
-            if settings.viewModel.useBeamSearch {
-                params.beamSearchBeamSize = Int32(settings.viewModel.beamSize)
-            }
-            
-            // Enable real-time output
-            params.printRealtime = true
-            params.print_realtime = true
-            
-            let callback: @convention(c) (OpaquePointer?, OpaquePointer?, Int32, UnsafeMutableRawPointer?) -> Void = { ctx, state, n_new, user_data in
-                guard let ctx = ctx,
-                      let userData = user_data,
-                      let service = Unmanaged<TranscriptionService>.fromOpaque(userData).takeUnretainedValue() as TranscriptionService?
-                else { return }
-                service.handleNewSegment(context: ctx, state: state, nNew: Int(n_new))
-            }
-            params.newSegmentCallback = callback
-            params.newSegmentCallbackUserData = Unmanaged.passUnretained(self).toOpaque()
-            
-            if !context.full(samples: Array(UnsafeBufferPointer(start: samplePtr, count: sampleCount)),
-                             params: &params)
-            {
-                print("Failed to process audio segment")
-            }
-        }
     }
     
     func startRealTimeTranscription(settings: Settings) {
@@ -269,23 +133,26 @@ class TranscriptionService: ObservableObject {
         
         // Set up decoding parameters
         var params = WhisperFullParams()
-        params.strategy = settings.viewModel.useBeamSearch ? .beamSearch : .greedy
+
+        print("settings.translateToEnglish \(settings.translateToEnglish)")
+
+        params.strategy = settings.useBeamSearch ? .beamSearch : .greedy
         params.nThreads = Int32(nThreads)
-        params.noTimestamps = !settings.viewModel.showTimestamps
-        params.suppressBlank = settings.viewModel.suppressBlankAudio
-        params.translate = settings.viewModel.translateToEnglish
-        params.language = settings.viewModel.selectedLanguage != "auto" ? settings.viewModel.selectedLanguage : nil
-        params.detectLanguage = settings.viewModel.selectedLanguage == "auto"
+        params.noTimestamps = !settings.showTimestamps
+        params.suppressBlank = settings.suppressBlankAudio
+        params.translate = settings.translateToEnglish
+        params.language = settings.selectedLanguage != "auto" ? settings.selectedLanguage : nil
+        params.detectLanguage = settings.selectedLanguage == "auto"
         
         // Set advanced parameters from settings
-        params.temperature = Float(settings.viewModel.temperature)
-        params.noSpeechThold = Float(settings.viewModel.noSpeechThreshold)
-        params.initialPrompt = settings.viewModel.initialPrompt.isEmpty ? nil : settings.viewModel.initialPrompt
+        params.temperature = Float(settings.temperature)
+        params.noSpeechThold = Float(settings.noSpeechThreshold)
+        params.initialPrompt = settings.initialPrompt.isEmpty ? nil : settings.initialPrompt
         
         print("params \(params)")
         
-        if settings.viewModel.useBeamSearch {
-            params.beamSearchBeamSize = Int32(settings.viewModel.beamSize)
+        if settings.useBeamSearch {
+            params.beamSearchBeamSize = Int32(settings.beamSize)
         }
         
         // Enable real-time output
@@ -313,7 +180,7 @@ class TranscriptionService: ObservableObject {
         for i in 0..<nSegments {
             guard let segmentText = context.fullGetSegmentText(iSegment: i) else { continue }
             
-            if settings.viewModel.showTimestamps {
+            if settings.showTimestamps {
                 let t0 = context.fullGetSegmentT0(iSegment: i)
                 let t1 = context.fullGetSegmentT1(iSegment: i)
                 text += String(format: "[%.1f->%.1f] ", Float(t0) / 100.0, Float(t1) / 100.0)

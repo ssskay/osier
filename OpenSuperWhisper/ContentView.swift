@@ -16,7 +16,6 @@ class ContentViewModel: ObservableObject {
     @Published var isBlinking = false
     @Published var recorder: AudioRecorder = .shared
     @Published var transcriptionService = TranscriptionService.shared
-    @Published var settings = Settings.shared
     @Published var recordingStore = RecordingStore.shared
 
     private var blinkTimer: Timer?
@@ -41,7 +40,7 @@ class ContentViewModel: ObservableObject {
 
                 do {
                     print("start decoding...")
-                    let text = try await transcriptionService.transcribeAudio(url: tempURL, settings: settings)
+                    let text = try await transcriptionService.transcribeAudio(url: tempURL, settings: Settings())
 
                     // Create a new Recording instance
                     let timestamp = Date()
@@ -349,7 +348,7 @@ struct ContentView: View {
         }
         .fileDropHandler()
         .sheet(isPresented: $isSettingsPresented) {
-            SettingsView(settings: viewModel.settings)
+            SettingsView()
         }
     }
 }
