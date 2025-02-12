@@ -31,21 +31,13 @@ Build the macOS app
 
 Create DMG
 
-### mac sign
-
-```sh
-[bundle exec] fastlane mac sign
-```
-
-Sign the app with your Developer ID
-
 ### mac release
 
 ```sh
 [bundle exec] fastlane mac release
 ```
 
-Build, create DMG, and sign the app
+Build and create DMG
 
 ----
 

@@ -28,7 +28,7 @@ platform :mac do
       clean: true,
       build: true,
       destination: "platform=macOS,arch=arm64",
-      xcargs: "CODE_SIGN_IDENTITY='' CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO MACOSX_DEPLOYMENT_TARGET=15.0",
+      xcargs: "MACOSX_DEPLOYMENT_TARGET=15.0 CODE_SIGN_IDENTITY='-' CODE_SIGN_INJECT_BASE_ENTITLEMENTS=NO CODE_SIGN_STYLE=Automatic",
       derivedDataPath: "build",
       formatter: "xcpretty --simple --color"
     )
@@ -63,35 +63,9 @@ platform :mac do
     UI.success("DMG created successfully at #{dmg_path}")
   end
 
-  desc "Sign the app with your Developer ID"
-  lane :sign do |options|
-    # Use provided identity, env variable, or error out
-    identity = options[:identity] || ENV["SIGNING_IDENTITY"]
-    UI.user_error!("No signing identity provided! Set SIGNING_IDENTITY in .env file or provide via identity parameter") unless identity
-
-    app_path = "build/Build/Products/Release/OpenSuperWhisper.app"
-    
-    # Verify the app exists
-    UI.user_error!("App not found at #{app_path}") unless File.exist?(app_path)
-
-    # Sign the app
-    sh("codesign", 
-      "--force", 
-      "--sign", identity,
-      "--deep", 
-      "--timestamp",
-      "--options", "runtime",
-      app_path
-    )
-
-    # Verify signature
-    sh("codesign", "--verify", "--verbose", app_path)
-  end
-
-  desc "Build, create DMG, and sign the app"
-  lane :release do |options|
+  desc "Build and create DMG"
+  lane :release do
     build
     create_dmg
-    sign(identity: options[:identity]) # Will use default if no identity provided
   end
 end

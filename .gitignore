@@ -117,3 +117,4 @@ fastlane/screenshots
 fastlane/test_output
 fastlane/build
 default.profraw
+*.profraw
