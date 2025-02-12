@@ -57,7 +57,7 @@ class ContentViewModel: ObservableObject {
                     try recorder.moveTemporaryRecording(from: tempURL, to: finalURL)
 
                     // Save the recording to store
-                    await recordingStore.addRecording(Recording(
+                    recordingStore.addRecording(Recording(
                         id: UUID(),
                         timestamp: timestamp,
                         fileName: fileName,
@@ -86,8 +86,11 @@ class ContentViewModel: ObservableObject {
 
     private func startBlinking() {
         blinkTimer = Timer.scheduledTimer(withTimeInterval: 0.8, repeats: true) { [weak self] _ in
-            self?.isBlinking.toggle()
+            Task { @MainActor in
+                self?.isBlinking.toggle()
+            }
         }
+        RunLoop.current.add(blinkTimer!, forMode: .common)
     }
 
     private func stopBlinking() {
@@ -573,7 +576,7 @@ struct TranscriptionView: View {
 struct MainRecordButton: View {
     let isRecording: Bool
     @Environment(\.colorScheme) private var colorScheme
-    
+
     private var buttonColor: Color {
         colorScheme == .dark ? .white : .gray
     }

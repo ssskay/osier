@@ -11,19 +11,9 @@ class TranscriptionService: ObservableObject {
     @Published private(set) var isLoading = false
     
     private var context: MyWhisperContext?
-    private var realTimeTranscriptionTask: Task<Void, Never>?
-    private var audioEngine: AVAudioEngine?
-    private var inputNode: AVAudioInputNode?
-    private let sampleRate: Double = 16000
-    private var audioBuffer: [Float] = []
-    private let bufferSize = 4096
-    private var audioBufferLock = NSLock()
-    private var isProcessing = false
-    private var settings: Settings?
     
     init() {
         loadModel()
-        setupAudioEngine()
     }
     
     private func loadModel() {
@@ -52,47 +42,6 @@ class TranscriptionService: ObservableObject {
                 print("Model reloaded")
             }
         }
-    }
-    
-    private func setupAudioEngine() {
-        // Check for audio input devices first
-        let discoverySession = AVCaptureDevice.DiscoverySession(
-            deviceTypes: [.microphone, .external],
-            mediaType: .audio,
-            position: .unspecified
-        )
-        
-        // Don't setup if no input devices available
-        guard !discoverySession.devices.isEmpty else {
-            print("No audio input devices available")
-            return
-        }
-        
-        audioEngine = AVAudioEngine()
-        inputNode = audioEngine?.inputNode
-    }
-    
-    func startRealTimeTranscription(settings: Settings) {
-        self.settings = settings
-        guard let audioEngine = audioEngine else { return }
-        
-        do {
-            try audioEngine.start()
-            isTranscribing = true
-            currentSegment = ""
-            transcribedText = ""
-        } catch {
-            print("Failed to start audio engine: \(error)")
-        }
-    }
-    
-    func stopTranscribing() {
-        audioEngine?.stop()
-        audioEngine?.inputNode.removeTap(onBus: 0)
-        setupAudioEngine()
-        isTranscribing = false
-        currentSegment = ""
-        audioBuffer.removeAll()
     }
     
     func transcribeAudio(url: URL, settings: Settings) async throws -> String {
