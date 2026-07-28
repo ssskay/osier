@@ -1,3 +1,4 @@
+import ApplicationServices
 import Combine
 import Foundation
 
@@ -181,9 +182,25 @@ final class DictationPipeline: ObservableObject {
                 try? FileManager.default.removeItem(at: item.tempURL)
             }
 
-            let pasteTargetMissing = hasText ? insertText(text) : false
+            // Synthetic keystrokes (⌘V, typing, Return) are silently DROPPED by macOS unless
+            // this app has the Accessibility grant — the paste code "runs" and nothing lands,
+            // which reads as "transcribed fine, never pasted". A rename/re-sign resets the
+            // grant, so check *here*, at use time: keep the text on the clipboard, say exactly
+            // what's wrong, and ask macOS to show the grant prompt (once per launch). (#ax-paste)
+            var pasteTargetMissing = false
+            if hasText && AppPreferences.shared.autoPasteTranscription && !AXIsProcessTrusted() {
+                ClipboardUtil.copyToClipboard(IndicatorViewModel.applyPostProcessing(text))
+                Diag.mark("insertText skipped: Accessibility not granted — synthetic ⌘V would be dropped")
+                IndicatorWindowManager.shared.flash(.error("Auto-paste needs Accessibility — text copied, press ⌘V"))
+                promptForAccessibilityOnce()
+            } else if hasText {
+                pasteTargetMissing = insertText(text)
+            }
             if hasText {
                 PostRecordHook.runIfEnabled(text: text, audioPath: hookAudioPath, timestamp: item.startedAt, duration: 0)
+                // Feed the auto-learning dictionary: repeated proper nouns become
+                // Settings suggestions (never silent adds). (#auto-dictionary)
+                AutoDictionary.record(text)
             }
 
             // Submit only when auto-paste actually inserted text somewhere. A short settle delay lets
@@ -266,6 +283,16 @@ final class DictationPipeline: ObservableObject {
             print("Failed to persist failed recording: \(error)")
             return nil
         }
+    }
+
+    /// One-shot system prompt for the Accessibility grant ("Osier would like to control this
+    /// computer"). Guarded so a dictation-heavy session doesn't nag on every clip. (#ax-paste)
+    private var promptedForAccessibility = false
+    private func promptForAccessibilityOnce() {
+        guard !promptedForAccessibility else { return }
+        promptedForAccessibility = true
+        let options = [kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String: true] as CFDictionary
+        AXIsProcessTrustedWithOptions(options)
     }
 
     /// Returns `true` when auto-paste ran but no editable field was focused, so the caller can leave

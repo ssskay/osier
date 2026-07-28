@@ -43,6 +43,7 @@ echo "             identity: $IDENTITY"
 # --deep is fine here: dev convenience re-sign, not distribution. It re-signs
 # embedded dylibs/frameworks with the same stable identity in one pass.
 codesign --force --deep --timestamp=none \
+    --options runtime \
     --entitlements "$ENTITLEMENTS" \
     --sign "$IDENTITY" "$APP"
 

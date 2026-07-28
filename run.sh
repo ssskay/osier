@@ -95,15 +95,39 @@ if [[ $? -eq 0 ]] && [[ ! "$BUILD_OUTPUT" =~ "BUILD FAILED" ]]; then
     echo "Building successful!"
     # Re-sign with a stable identity so macOS keeps granted TCC permissions
     # across rebuilds (no-op / ad-hoc fallback when no identity is available).
-    "$(dirname "$0")/Scripts/dev-codesign.sh" "./Build/Build/Products/Debug/OpenSuperWhisper.app" || true
+    "$(dirname "$0")/Scripts/dev-codesign.sh" "./Build/Build/Products/Debug/Osier.app" || true
     if $JUST_BUILD; then
         exit 0
     fi
     echo "Starting the app..."
     # Remove quarantine attribute if exists
-    xattr -d com.apple.quarantine ./Build/Build/Products/Debug/OpenSuperWhisper.app 2>/dev/null || true
-    # Run the app and show logs
-    ./Build/Build/Products/Debug/OpenSuperWhisper.app/Contents/MacOS/OpenSuperWhisper
+    xattr -d com.apple.quarantine ./Build/Build/Products/Debug/Osier.app 2>/dev/null || true
+
+    # One instance at a time: `open` would just activate an already-running copy instead of
+    # launching the build we just made, and two copies register the same global hotkeys.
+    if pgrep -x Osier > /dev/null; then
+        echo "Quitting the running Osier first..."
+        pkill -x Osier
+        for _ in {1..30}; do
+            pgrep -x Osier > /dev/null || break
+            sleep 0.1
+        done
+    fi
+
+    # Launch through LaunchServices (`open`) — NOT by exec'ing the binary directly.
+    #
+    # A GUI app exec'd from a shell inherits Terminal as its TCC *responsible process*, so
+    # macOS checks Terminal's Accessibility grant instead of Osier's. The app's own toggle
+    # can be ON in System Settings and it still can't paste into the focused field, with no
+    # error anywhere — it just silently isn't trusted. `open` makes Osier responsible for
+    # itself, so its own grant is the one that counts. (#tcc-responsible-process)
+    #
+    # --stdout/--stderr keep the app's output in this window, exactly as before; -W blocks
+    # until it quits, and the trap makes Ctrl-C here stop the app like it used to.
+    APP_TTY="$(tty 2>/dev/null)"
+    [[ -c "$APP_TTY" ]] || APP_TTY=/dev/stdout
+    trap 'pkill -x Osier 2>/dev/null' INT TERM
+    open -W --stdout "$APP_TTY" --stderr "$APP_TTY" ./Build/Build/Products/Debug/Osier.app
 else
     echo "Build failed!"
     exit 1

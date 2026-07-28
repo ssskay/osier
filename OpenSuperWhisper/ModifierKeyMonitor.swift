@@ -13,6 +13,10 @@ enum ModifierKey: String, CaseIterable, Identifiable, Codable {
     case leftControl = "leftControl"
     case rightControl = "rightControl"
     case fn = "fn"
+    /// Fn held together with either Control. The only chord in this list: every other
+    /// case is a single modifier identified by its key code, so the monitor has to
+    /// match this one on flags instead (see `triggerKeyCodes`).
+    case fnControl = "fnControl"
     
     var id: String { rawValue }
     
@@ -28,6 +32,7 @@ enum ModifierKey: String, CaseIterable, Identifiable, Codable {
         case .leftControl: return "Left ⌃ Control"
         case .rightControl: return "Right ⌃ Control"
         case .fn: return "Fn"
+        case .fnControl: return "Fn + ⌃ Control"
         }
     }
     
@@ -43,6 +48,7 @@ enum ModifierKey: String, CaseIterable, Identifiable, Codable {
         case .leftControl: return "⌃"
         case .rightControl: return "⌃"
         case .fn: return "fn"
+        case .fnControl: return "fn⌃"
         }
     }
     
@@ -58,6 +64,18 @@ enum ModifierKey: String, CaseIterable, Identifiable, Codable {
         case .leftControl: return 59
         case .rightControl: return 62
         case .fn: return 63
+        case .fnControl: return 63
+        }
+    }
+
+    /// Every key code that can make or break this trigger. A single modifier has one;
+    /// the Fn+Control chord has three, because releasing *either* half ends it and
+    /// `handleFlagsChanged` would otherwise never see the Control key's event.
+    var triggerKeyCodes: Set<UInt16> {
+        switch self {
+        case .none: return []
+        case .fnControl: return [63, 59, 62]  // fn, left ⌃, right ⌃
+        default: return [keyCode]
         }
     }
     
@@ -69,6 +87,7 @@ enum ModifierKey: String, CaseIterable, Identifiable, Codable {
         case .leftShift, .rightShift: return .shift
         case .leftControl, .rightControl: return .control
         case .fn: return .function
+        case .fnControl: return [.function, .control]
         }
     }
     
@@ -80,6 +99,7 @@ enum ModifierKey: String, CaseIterable, Identifiable, Codable {
         case .leftShift, .rightShift: return .maskShift
         case .leftControl, .rightControl: return .maskControl
         case .fn: return .maskSecondaryFn
+        case .fnControl: return [.maskSecondaryFn, .maskControl]
         }
     }
     
@@ -93,110 +113,99 @@ enum ModifierKey: String, CaseIterable, Identifiable, Codable {
     }
 }
 
+/// Watches for the trigger modifier (or Fn+Control chord) via **NSEvent monitors**, not a
+/// CGEventTap.
+///
+/// This class used a CGEventTap through two "durable" fixes, and macOS killed it both times:
+///
+/// 1. Tap on the main run loop → main-thread stalls (AppleScript/AX work at record-start)
+///    tripped the tap watchdog; macOS disabled it and dropped the chord's release events.
+/// 2. Tap on a dedicated `.userInteractive` thread → **still** died. Logged 2026-07-27: the
+///    tap timed out while the thread was idle, `CGEvent.tapEnable` inside the
+///    `tapDisabledByTimeout` callback claimed success, the state resync was correct
+///    ("modifier still held: false") — and yet no event was ever delivered again. The next
+///    press was invisible; recording could not be stopped.
+///
+/// NSEvent monitors have no watchdog and no disable path. Under a main-thread stall their
+/// events arrive *late* instead of being dropped forever — the edge detector stays in sync
+/// and the stop lands as soon as the stall clears. That trade is strictly better for a
+/// dictation trigger.
+///
+/// A **global** monitor sees events only while some *other* app is active; a **local** one
+/// covers events delivered to Osier itself (Settings window open, etc.). Exactly one of the
+/// two fires per event, so edges can't double-fire. Global monitors require the
+/// Accessibility grant the app already demands for text insertion.
 class ModifierKeyMonitor {
     static let shared = ModifierKeyMonitor()
-    
-    private var eventTap: CFMachPort?
-    private var runLoopSource: CFRunLoopSource?
+
+    private var globalMonitor: Any?
+    private var localMonitor: Any?
     private var selectedModifierKey: ModifierKey = .none
     private var isModifierPressed = false
-    
+
     var onKeyDown: (() -> Void)?
     var onKeyUp: (() -> Void)?
-    
+
     private init() {}
-    
+
     func start(modifierKey: ModifierKey) {
-        guard modifierKey != .none else {
-            stop()
-            return
-        }
-        
         stop()
-        
+        guard modifierKey != .none else { return }
+
         selectedModifierKey = modifierKey
-        isModifierPressed = false
-        
-        let eventMask = CGEventMask(1 << CGEventType.flagsChanged.rawValue)
-        
-        guard let tap = CGEvent.tapCreate(
-            tap: .cgSessionEventTap,
-            place: .headInsertEventTap,
-            options: .listenOnly,
-            eventsOfInterest: eventMask,
-            callback: { (proxy, type, event, refcon) -> Unmanaged<CGEvent>? in
-                guard let refcon = refcon else {
-                    return Unmanaged.passUnretained(event)
-                }
-                
-                let monitor = Unmanaged<ModifierKeyMonitor>.fromOpaque(refcon).takeUnretainedValue()
-                
-                if type == .tapDisabledByTimeout || type == .tapDisabledByUserInput {
-                    monitor.reenableTap()
-                    return Unmanaged.passUnretained(event)
-                }
-                
-                monitor.handleFlagsChanged(event: event)
-                return Unmanaged.passUnretained(event)
-            },
-            userInfo: Unmanaged.passUnretained(self).toOpaque()
-        ) else {
-            print("ModifierKeyMonitor: Failed to create event tap. Check accessibility permissions.")
-            return
+        // Seed from the live flags so a modifier already held at start() doesn't
+        // desync the edge detector (first observed event would otherwise look like
+        // a release with wasPressed == false and be swallowed).
+        isModifierPressed = NSEvent.modifierFlags.contains(modifierKey.modifierFlag)
+
+        globalMonitor = NSEvent.addGlobalMonitorForEvents(matching: .flagsChanged) { [weak self] event in
+            self?.handleFlagsChanged(event)
         }
-        
-        eventTap = tap
-        runLoopSource = CFMachPortCreateRunLoopSource(kCFAllocatorDefault, tap, 0)
-        
-        if let source = runLoopSource {
-            CFRunLoopAddSource(CFRunLoopGetCurrent(), source, .commonModes)
-            CGEvent.tapEnable(tap: tap, enable: true)
-            print("ModifierKeyMonitor: Started monitoring for \(modifierKey.displayName)")
+        localMonitor = NSEvent.addLocalMonitorForEvents(matching: .flagsChanged) { [weak self] event in
+            self?.handleFlagsChanged(event)
+            return event
         }
+
+        if globalMonitor == nil {
+            print("ModifierKeyMonitor: Failed to install global monitor. Check Accessibility permission.")
+        }
+        print("ModifierKeyMonitor: Started monitoring for \(modifierKey.displayName) (NSEvent monitors)")
     }
-    
+
     func stop() {
-        if let tap = eventTap {
-            CGEvent.tapEnable(tap: tap, enable: false)
-            if let source = runLoopSource {
-                CFRunLoopRemoveSource(CFRunLoopGetCurrent(), source, .commonModes)
-            }
+        if let monitor = globalMonitor {
+            NSEvent.removeMonitor(monitor)
+            globalMonitor = nil
         }
-        eventTap = nil
-        runLoopSource = nil
+        if let monitor = localMonitor {
+            NSEvent.removeMonitor(monitor)
+            localMonitor = nil
+        }
         isModifierPressed = false
         print("ModifierKeyMonitor: Stopped")
     }
-    
-    fileprivate func reenableTap() {
-        if let tap = eventTap {
-            CGEvent.tapEnable(tap: tap, enable: true)
-            print("ModifierKeyMonitor: Re-enabled tap after timeout")
-        }
-    }
-    
-    private func handleFlagsChanged(event: CGEvent) {
-        let keyCode = UInt16(event.getIntegerValueField(.keyboardEventKeycode))
-        let flags = event.flags
-        
-        guard keyCode == selectedModifierKey.keyCode else { return }
-        
-        let cgFlag = selectedModifierKey.cgEventFlag
-        let isPressed = flags.contains(cgFlag)
-        
+
+    private func handleFlagsChanged(_ event: NSEvent) {
+        guard selectedModifierKey.triggerKeyCodes.contains(event.keyCode) else { return }
+
+        // `contains` on an OptionSet is a superset test, so a multi-flag chord only
+        // counts as pressed while *every* one of its modifiers is held.
+        let isPressed = event.modifierFlags.contains(selectedModifierKey.modifierFlag)
+
+        // TEMPORARY DIAGNOSTIC (#chord-double-fire): keep until a few days of dictation
+        // confirm the NSEvent transport holds up, then remove.
+        print("ModifierKeyMonitor: keyCode=\(event.keyCode) flags=0x\(String(event.modifierFlags.rawValue, radix: 16)) isPressed=\(isPressed) wasPressed=\(isModifierPressed)")
+
+        // Monitor handlers are delivered on the main thread — invoke callbacks directly.
         if isPressed && !isModifierPressed {
             isModifierPressed = true
-            DispatchQueue.main.async {
-                self.onKeyDown?()
-            }
+            onKeyDown?()
         } else if !isPressed && isModifierPressed {
             isModifierPressed = false
-            DispatchQueue.main.async {
-                self.onKeyUp?()
-            }
+            onKeyUp?()
         }
     }
-    
+
     deinit {
         stop()
     }

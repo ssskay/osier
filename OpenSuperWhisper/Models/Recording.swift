@@ -195,6 +195,43 @@ class RecordingStore: ObservableObject {
         }
     }
 
+    /// Lifetime dictation stats, computed from completed recordings (Willow-style header:
+    /// dictated words · average speed · time saved — deliberately no streak).
+    struct DictationStats: Equatable {
+        var totalWords = 0
+        var totalDuration: TimeInterval = 0
+
+        /// Speaking speed across all dictations.
+        var averageWPM: Double {
+            totalDuration > 0 ? Double(totalWords) / (totalDuration / 60) : 0
+        }
+        /// Time saved vs typing the same words at a typical typing speed:
+        /// (words ÷ typing WPM) − actual speaking time.
+        var timeSaved: TimeInterval {
+            max(0, Double(totalWords) / Self.assumedTypingWPM * 60 - totalDuration)
+        }
+        static let assumedTypingWPM = 40.0
+    }
+
+    /// One pass over completed transcriptions. A streaming cursor keeps memory flat no
+    /// matter how large the history grows; at typical daily use this stays millisecond-cheap.
+    nonisolated func fetchStats() async throws -> DictationStats {
+        try await dbQueue.read { db in
+            var stats = DictationStats()
+            let cursor = try Row.fetchCursor(
+                db,
+                sql: "SELECT transcription, duration FROM \(Recording.databaseTableName) WHERE status = ?",
+                arguments: [RecordingStatus.completed.rawValue])
+            while let row = try cursor.next() {
+                let text: String = row["transcription"]
+                let duration: Double = row["duration"]
+                stats.totalWords += text.split(whereSeparator: \.isWhitespace).count
+                stats.totalDuration += duration
+            }
+            return stats
+        }
+    }
+
     func getPendingRecordings() -> [Recording] {
         do {
             return try dbQueue.read { db in

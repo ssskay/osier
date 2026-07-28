@@ -10,6 +10,12 @@ final class NotchTuning: ObservableObject {
     @Published var topRadius: Double { didSet { save(topRadius, "notchTopRadius") } }
     @Published var bottomRadius: Double { didSet { save(bottomRadius, "notchBottomRadius") } }
 
+    /// Height of the physical notch band the pill's top hides behind (0 on screens without
+    /// a notch). Runtime-only — set by IndicatorWindowManager per show(), never persisted.
+    /// The indicator view pads its content down by this much so it renders in the visible
+    /// chin below the bezel instead of behind it. (#notch-exact-fit)
+    @Published var topInset: Double = 0
+
     private init() {
         let d = UserDefaults.standard
         width = d.object(forKey: "notchWidth") as? Double ?? 220

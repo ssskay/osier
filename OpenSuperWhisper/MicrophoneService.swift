@@ -98,6 +98,19 @@ class MicrophoneService: ObservableObject {
     
     private func isBuiltInDevice(_ device: AVCaptureDevice) -> Bool {
         #if os(macOS)
+        // Decide from the transport type before any name/manufacturer guessing: a
+        // Continuity iPhone is Apple-made and not USB/Bluetooth/AirPods, so the
+        // heuristics further down would call it built-in unless its *name* happened to
+        // contain "iphone". Renaming the phone defeated that. (#continuity-rename)
+        let transport = UInt32(bitPattern: device.transportType)
+        if transport == kAudioDeviceTransportTypeContinuityCaptureWired
+            || transport == kAudioDeviceTransportTypeContinuityCaptureWireless {
+            return false
+        }
+        if transport == kAudioDeviceTransportTypeBuiltIn {
+            return true
+        }
+
         if #available(macOS 14.0, *) {
             if device.deviceType == .microphone {
                 let uniqueID = device.uniqueID.lowercased()
@@ -243,6 +256,17 @@ class MicrophoneService: ObservableObject {
     }
     
     func isContinuityMicrophone(_ device: AudioDevice) -> Bool {
+        // CoreAudio's transport type is authoritative and survives the user renaming
+        // their phone. The name checks below only ever matched an iPhone still called
+        // "…iPhone": a phone named e.g. "uwunator 5000" matched none of them, so it fell
+        // through to `isBuiltInDevice` (Apple-made, not USB/BT/AirPods) and got picked as
+        // the *default* mic — then pushed to the system default input. (#continuity-rename)
+        let transport = UInt32(bitPattern: getTransportType(for: device))
+        if transport == kAudioDeviceTransportTypeContinuityCaptureWired
+            || transport == kAudioDeviceTransportTypeContinuityCaptureWireless {
+            return true
+        }
+
         let name = device.name.lowercased()
         let id = device.id.lowercased()
         let manufacturer = (device.manufacturer ?? "").lowercased()
