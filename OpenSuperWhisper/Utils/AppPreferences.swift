@@ -222,6 +222,33 @@ final class AppPreferences {
             customDictionaryData = try? JSONEncoder().encode(newValue)
         }
     }
+
+    // Auto-learning dictionary: proper-noun-ish terms dictated repeatedly become
+    // *suggestions* in Settings (never silent auto-adds). See `AutoDictionary`.
+    @UserDefault(key: "autoDictionaryEnabled", defaultValue: true)
+    var autoDictionaryEnabled: Bool
+
+    /// Suggestions the user rejected — never offered again (case preserved for display,
+    /// matched case-insensitively).
+    @UserDefault(key: "autoDictionaryDismissed", defaultValue: [])
+    var autoDictionaryDismissed: [String]
+
+    @OptionalUserDefault(key: "autoDictionaryCacheData")
+    private var autoDictionaryCacheData: Data?
+
+    /// Occurrence counts of candidate terms, keyed by lowercased term.
+    var autoDictionaryCache: [String: AutoDictionaryCandidate] {
+        get {
+            guard let data = autoDictionaryCacheData,
+                  let cache = try? JSONDecoder().decode([String: AutoDictionaryCandidate].self, from: data) else {
+                return [:]
+            }
+            return cache
+        }
+        set {
+            autoDictionaryCacheData = try? JSONEncoder().encode(newValue)
+        }
+    }
     
     @UserDefault(key: "useBeamSearch", defaultValue: false)
     var useBeamSearch: Bool
@@ -303,6 +330,17 @@ final class AppPreferences {
     /// Where the recording indicator appears: "cursor" (default), "top", "center", "bottom".
     @UserDefault(key: "indicatorPosition", defaultValue: "cursor")
     var indicatorPosition: String
+
+    /// Notch mode: size the pill from the *physical* notch of the screen it appears on
+    /// (body width == notch width, height == notch height + a small chin) so it reads as the
+    /// notch extending, Willow-style — instead of the fixed NotchTuning defaults. Disable to
+    /// hand geometry back to the manual sliders.
+    @UserDefault(key: "notchAutoFit", defaultValue: true)
+    var notchAutoFit: Bool
+
+    /// How far (pt) the notch pill extends below the physical notch when auto-fit is on.
+    @UserDefault(key: "notchChinHeight", defaultValue: 10.0)
+    var notchChinHeight: Double
 
     /// Strip filler words (um, uh, …) from the transcription before saving/inserting. Opt-in.
     @UserDefault(key: "removeFillerWords", defaultValue: false)

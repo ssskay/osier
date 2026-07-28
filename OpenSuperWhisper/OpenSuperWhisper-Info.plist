@@ -19,18 +19,27 @@
 	</array>
 	<key>LSMinimumSystemVersion</key>
 	<string>14.0</string>
+	<key>CFBundleName</key>
+	<string>Osier</string>
+	<key>CFBundleDisplayName</key>
+	<string>Osier</string>
 	<key>NSMicrophoneUsageDescription</key>
-	<string>OpenSuperWhisper needs microphone access to record audio for transcription.</string>
+	<string>Osier needs microphone access to record audio for transcription.</string>
 	<key>NSAccessibilityUsageDescription</key>
-	<string>OpenSuperWhisper needs accessibility access to provide system-wide functionality.</string>
+	<string>Osier needs accessibility access to provide system-wide functionality.</string>
 	<key>NSAppleEventsUsageDescription</key>
-	<string>OpenSuperWhisper reads the active browser tab's URL to record where a dictation happened and to apply per-site model rules.</string>
+	<string>Osier reads the active browser tab's URL to record where a dictation happened and to apply per-site model rules.</string>
+	<!-- Sparkle is disarmed on purpose. The feed below is my-monkeys' appcast: with
+	     automatic checks on, this hard fork would offer to "update" itself into their
+	     build, silently replacing Osier. SPEC.md §7 rules out releases entirely, so
+	     there is nothing to check for. Keys kept (not deleted) so the wiring is still
+	     visible if a real Osier feed ever exists. -->
 	<key>SUFeedURL</key>
 	<string>https://raw.githubusercontent.com/my-monkeys/OpenSuperWhisper/master/appcast.xml</string>
 	<key>SUPublicEDKey</key>
 	<string>ECQpCBVVumUKoBjgcDPSlmllYiWlSAUFGh5WycBhCA0=</string>
 	<key>SUEnableAutomaticChecks</key>
-	<true/>
+	<false/>
 	<key>NSAppTransportSecurity</key>
 	<dict>
 		<!-- The Remote engine points at ANY user-specified OpenAI-compatible server,
@@ -45,6 +54,6 @@
 		<true/>
 	</dict>
 	<key>NSLocalNetworkUsageDescription</key>
-	<string>OpenSuperWhisper connects to remote transcription servers on your local network (e.g. a self-hosted Whisper/LiteLLM endpoint).</string>
+	<string>Osier connects to remote transcription servers on your local network (e.g. a self-hosted Whisper/LiteLLM endpoint).</string>
 </dict>
 </plist>

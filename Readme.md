@@ -1,12 +1,46 @@
 <div align="center">
 
-# OpenSuperWhisper
+# Osier
+
+**Notch-native dictation for macOS. Tap Fn+Control, speak, tap again — your words land where you're typing.**
+
+[![License: MIT](https://img.shields.io/badge/License-MIT-969696?style=for-the-badge)](LICENSE)
+
+</div>
+
+## Credits — this is a hard fork
+
+Osier is a personal hard fork of
+[`my-monkeys/OpenSuperWhisper`](https://github.com/my-monkeys/OpenSuperWhisper) (MIT), which is itself
+a maintained fork of [`Starmel/OpenSuperWhisper`](https://github.com/Starmel/OpenSuperWhisper) (MIT).
+Essentially all of the engine, audio, insertion and indicator code is theirs; Osier reshapes the
+trigger and the notch UI on top of it.
+
+```
+Starmel/OpenSuperWhisper  →  my-monkeys/OpenSuperWhisper  →  Osier
+```
+
+The MIT licence and its `Copyright (c) 2024 OpenSuperWhisper` notice are preserved verbatim in
+[LICENSE](LICENSE) — byte-identical to upstream's. Please direct bug reports about *upstream*
+behaviour to my-monkeys, not here.
+
+**This is not a distribution.** No signing, no notarization, no releases, and Sparkle auto-update is
+deliberately disabled — the appcast in `Info.plist` still points at my-monkeys, so leaving updates on
+would replace Osier with their build. Build from source; see [Building from source](#building-from-source).
+
+Everything below this line is upstream's README, kept for reference. It describes
+OpenSuperWhisper's features and install paths, most of which still apply.
+
+---
+
+<div align="center">
+
+# OpenSuperWhisper (upstream)
 
 **Speak. It types. In any app on your Mac — free, open-source, on-device.**
 
 [![Website](https://img.shields.io/badge/Website-opensuperwhisper.com-E8734A?style=for-the-badge)](https://opensuperwhisper.com)
 [![Latest release](https://img.shields.io/github/v/release/my-monkeys/OpenSuperWhisper?style=for-the-badge&color=0a8f57)](https://github.com/my-monkeys/OpenSuperWhisper/releases)
-[![License: MIT](https://img.shields.io/badge/License-MIT-969696?style=for-the-badge)](LICENSE)
 
 Hold a shortcut, speak, release — your words land in whatever app you're in.
 Four transcription engines (three fully on-device), no subscription, no account, no telemetry.
@@ -144,6 +178,16 @@ gem install xcpretty
 If something breaks, `.github/workflows/build.yml` is the CI recipe that builds the app on every
 push. Maintainers: see [`docs/PUBLISHING.md`](docs/PUBLISHING.md) for the notarized-release +
 Homebrew flow.
+
+To skip the `cd` and the typing every time, build a Dock launcher once:
+
+```sh
+./Scripts/make-dock-launcher.sh
+```
+
+That writes `~/Applications/Run Osier.app` — drag it into the Dock, and a click opens a Terminal
+window running `./run.sh` (build, then the app with its logs). Re-run the script if you move the
+checkout.
 
 </details>
 

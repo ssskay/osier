@@ -797,16 +797,16 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = OpenSuperWhisper/OpenSuperWhisper.entitlements;
-				CODE_SIGN_IDENTITY = "Apple Development";
-				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Apple Development";
-				CODE_SIGN_STYLE = Automatic;
+				CODE_SIGN_IDENTITY = "Developer ID Application";
+				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Developer ID Application";
+				CODE_SIGN_STYLE = Manual;
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 43;
 				DEAD_CODE_STRIPPING = YES;
 				DEFINES_MODULE = YES;
 				DEVELOPMENT_ASSET_PATHS = "\"OpenSuperWhisper/Preview Content\"";
-				DEVELOPMENT_TEAM = 5C67TFSJ2B;
-				"DEVELOPMENT_TEAM[sdk=macosx*]" = 5C67TFSJ2B;
+				DEVELOPMENT_TEAM = AH785WYH3F;
+				"DEVELOPMENT_TEAM[sdk=macosx*]" = AH785WYH3F;
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_MODULE_VERIFIER = YES;
 				ENABLE_PREVIEWS = YES;
@@ -824,7 +824,7 @@
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.productivity";
 				INFOPLIST_KEY_NSAppleEventsUsageDescription = "OpenSuperWhisper needs accessibility access to provide system-wide functionality.";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
-				INFOPLIST_KEY_NSMicrophoneUsageDescription = "OpenSuperWhisper needs microphone access to record audio for transcription.";
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Osier needs microphone access to record audio for transcription.";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
@@ -847,8 +847,9 @@
 					"$(inherited)",
 					"-lonnxruntime",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = fr.my-monkey.opensuperwhisper;
-				PRODUCT_NAME = "$(TARGET_NAME)";
+				PRODUCT_BUNDLE_IDENTIFIER = me.sarakay.osier;
+				PRODUCT_MODULE_NAME = OpenSuperWhisper;
+				PRODUCT_NAME = Osier;
 				PROVISIONING_PROFILE_SPECIFIER = "";
 				"PROVISIONING_PROFILE_SPECIFIER[sdk=macosx*]" = "";
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -863,16 +864,16 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = OpenSuperWhisper/OpenSuperWhisper.entitlements;
-				CODE_SIGN_IDENTITY = "Apple Development";
-				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Apple Development";
-				CODE_SIGN_STYLE = Automatic;
+				CODE_SIGN_IDENTITY = "Developer ID Application";
+				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Developer ID Application";
+				CODE_SIGN_STYLE = Manual;
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 43;
 				DEAD_CODE_STRIPPING = YES;
 				DEFINES_MODULE = YES;
 				DEVELOPMENT_ASSET_PATHS = "\"OpenSuperWhisper/Preview Content\"";
-				DEVELOPMENT_TEAM = 5C67TFSJ2B;
-				"DEVELOPMENT_TEAM[sdk=macosx*]" = 5C67TFSJ2B;
+				DEVELOPMENT_TEAM = AH785WYH3F;
+				"DEVELOPMENT_TEAM[sdk=macosx*]" = AH785WYH3F;
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_MODULE_VERIFIER = YES;
 				ENABLE_PREVIEWS = YES;
@@ -891,7 +892,7 @@
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.productivity";
 				INFOPLIST_KEY_NSAppleEventsUsageDescription = "OpenSuperWhisper needs accessibility access to provide system-wide functionality.";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
-				INFOPLIST_KEY_NSMicrophoneUsageDescription = "OpenSuperWhisper needs microphone access to record audio for transcription.";
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Osier needs microphone access to record audio for transcription.";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
@@ -915,8 +916,9 @@
 					"$(inherited)",
 					"-lonnxruntime",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = fr.my-monkey.opensuperwhisper;
-				PRODUCT_NAME = "$(TARGET_NAME)";
+				PRODUCT_BUNDLE_IDENTIFIER = me.sarakay.osier;
+				PRODUCT_MODULE_NAME = OpenSuperWhisper;
+				PRODUCT_NAME = Osier;
 				PROVISIONING_PROFILE_SPECIFIER = "";
 				"PROVISIONING_PROFILE_SPECIFIER[sdk=macosx*]" = "";
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -933,7 +935,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 43;
 				DEAD_CODE_STRIPPING = YES;
-				DEVELOPMENT_TEAM = 5C67TFSJ2B;
+				DEVELOPMENT_TEAM = AH785WYH3F;
 				GENERATE_INFOPLIST_FILE = YES;
 				HEADER_SEARCH_PATHS = (
 					"$(inherited)",
@@ -942,12 +944,12 @@
 				);
 				MACOSX_DEPLOYMENT_TARGET = 15.1;
 				MARKETING_VERSION = 0.9.9;
-				PRODUCT_BUNDLE_IDENTIFIER = fr.my-monkey.opensuperwhisperTests;
+				PRODUCT_BUNDLE_IDENTIFIER = me.sarakay.osierTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = NO;
 				SWIFT_OBJC_BRIDGING_HEADER = "$(PROJECT_DIR)/Bridge.h";
 				SWIFT_VERSION = 5.0;
-				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/OpenSuperWhisper.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/OpenSuperWhisper";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Osier.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Osier";
 			};
 			name = Debug;
 		};
@@ -958,7 +960,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 43;
 				DEAD_CODE_STRIPPING = YES;
-				DEVELOPMENT_TEAM = 5C67TFSJ2B;
+				DEVELOPMENT_TEAM = AH785WYH3F;
 				GENERATE_INFOPLIST_FILE = YES;
 				HEADER_SEARCH_PATHS = (
 					"$(inherited)",
@@ -967,12 +969,12 @@
 				);
 				MACOSX_DEPLOYMENT_TARGET = 15.1;
 				MARKETING_VERSION = 0.9.9;
-				PRODUCT_BUNDLE_IDENTIFIER = fr.my-monkey.opensuperwhisperTests;
+				PRODUCT_BUNDLE_IDENTIFIER = me.sarakay.osierTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = NO;
 				SWIFT_OBJC_BRIDGING_HEADER = "$(PROJECT_DIR)/Bridge.h";
 				SWIFT_VERSION = 5.0;
-				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/OpenSuperWhisper.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/OpenSuperWhisper";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Osier.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Osier";
 			};
 			name = Release;
 		};
@@ -982,10 +984,10 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 43;
 				DEAD_CODE_STRIPPING = YES;
-				DEVELOPMENT_TEAM = 5C67TFSJ2B;
+				DEVELOPMENT_TEAM = AH785WYH3F;
 				GENERATE_INFOPLIST_FILE = YES;
 				MARKETING_VERSION = 0.9.9;
-				PRODUCT_BUNDLE_IDENTIFIER = fr.my-monkey.opensuperwhisperUITests;
+				PRODUCT_BUNDLE_IDENTIFIER = me.sarakay.osierUITests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = NO;
 				SWIFT_VERSION = 5.0;
@@ -999,10 +1001,10 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 43;
 				DEAD_CODE_STRIPPING = YES;
-				DEVELOPMENT_TEAM = 5C67TFSJ2B;
+				DEVELOPMENT_TEAM = AH785WYH3F;
 				GENERATE_INFOPLIST_FILE = YES;
 				MARKETING_VERSION = 0.9.9;
-				PRODUCT_BUNDLE_IDENTIFIER = fr.my-monkey.opensuperwhisperUITests;
+				PRODUCT_BUNDLE_IDENTIFIER = me.sarakay.osierUITests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = NO;
 				SWIFT_VERSION = 5.0;
