@@ -110,8 +110,11 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, ObservableOb
     private var mainWindow: NSWindow?
     private var languageSubmenu: NSMenu?
     private var modelSubmenu: NSMenu?
+    private var triggerItem: NSMenuItem?
+    private var lastTakeItem: NSMenuItem?
     private var microphoneService = MicrophoneService.shared
     private var microphoneObserver: AnyCancellable?
+    private var recordingObserver: AnyCancellable?
     
     func applicationDidFinishLaunching(_ notification: Notification) {
 
@@ -197,27 +200,60 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, ObservableOb
     
     private func setupStatusBarItem() {
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
-        
+
         if let button = statusItem?.button {
-            if let iconImage = NSImage(named: "tray_icon") {
-                iconImage.size = NSSize(width: 48, height: 48)
-                iconImage.isTemplate = true
-                button.image = iconImage
-            } else {
-                button.image = NSImage(systemSymbolName: "waveform", accessibilityDescription: "Osier")
-            }
-            
             button.action = #selector(statusBarButtonClicked(_:))
             button.target = self
         }
-        
+
+        applyStatusBarIcon(recording: false)
+        observeRecordingForStatusIcon()
         updateStatusBarMenu()
+    }
+
+    /// The mark in the menu bar. Idle it goes up as a *template* image, so macOS tints it for
+    /// light and dark menu bars and for the highlighted state — the standard behaviour users
+    /// expect of a status item, and the reason the idle glyph doesn't carry its own green.
+    ///
+    /// Recording is the exception: template mode discards colour, and rust in the menu bar has to
+    /// survive as rust — it is the whole point of reserving it. So the recording icon is rendered
+    /// non-template with the strand in colour.
+    private func applyStatusBarIcon(recording: Bool) {
+        guard let button = statusItem?.button else { return }
+        let state: SpeakingStrand.State = recording ? .recording : .idle
+        // Every caller is an AppKit main-thread context (applicationDidFinishLaunching, or a
+        // sink already delivered on RunLoop.main), so this asserts rather than hops.
+        let image = MainActor.assumeIsolated {
+            SpeakingStrand.image(
+                state: state,
+                size: 18,
+                ring: recording ? Osier.mark : .black,
+                strand: recording ? Osier.recording : .black,
+                isTemplate: !recording)
+        }
+        image?.accessibilityDescription = recording ? "Osier — recording" : "Osier"
+        button.image = image
+    }
+
+    /// Swap the icon as recording starts and stops. Bound to the recorder itself rather than to
+    /// the indicator window, so the menu bar stays truthful even when the pill is hidden or has
+    /// collapsed to its tab.
+    private func observeRecordingForStatusIcon() {
+        recordingObserver = AudioRecorder.shared.$isRecording
+            .removeDuplicates()
+            .receive(on: RunLoop.main)
+            .sink { [weak self] isRecording in
+                self?.applyStatusBarIcon(recording: isRecording)
+            }
     }
     
     private func updateStatusBarMenu() {
         let menu = NSMenu()
-        
-        let openItem = NSMenuItem(title: "Open Window", action: #selector(openApp), keyEquivalent: "o")
+        menu.delegate = self
+
+        addBrandItems(to: menu)
+
+        let openItem = NSMenuItem(title: "Open Osier", action: #selector(openApp), keyEquivalent: "o")
         openItem.target = self   // without a target macOS disables the item (it did nothing)
         menu.addItem(openItem)
 
@@ -349,6 +385,82 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, ObservableOb
         statusItem?.menu = menu
     }
 
+    /// The brand rows that sit above the existing menu: how to start a dictation, and the last
+    /// thing you said with a way to copy it.
+    ///
+    /// Discoverability is the whole point of the trigger row — the hotkey is otherwise invisible,
+    /// and it is read live from `ShortcutManager` rather than hardcoded, so it stays honest across
+    /// all three trigger modes (mouse button, modifier chord, keyboard shortcut).
+    ///
+    /// Everything below the separator is the menu as it was: Language, Translate, Model,
+    /// Microphone, Settings, Check for Updates, Quit. Those submenus are the only quick way to
+    /// switch model or mic, so they stay.
+    private func addBrandItems(to menu: NSMenu) {
+        let trigger = NSMenuItem(title: "", action: nil, keyEquivalent: "")
+        trigger.isEnabled = false
+        menu.addItem(trigger)
+        triggerItem = trigger
+
+        let lastTake = NSMenuItem(title: "", action: #selector(copyLastTake), keyEquivalent: "")
+        lastTake.target = self
+        lastTake.toolTip = "Copy this transcription"
+        menu.addItem(lastTake)
+        lastTakeItem = lastTake
+
+        menu.addItem(NSMenuItem.separator())
+        refreshBrandItems()
+    }
+
+    /// Refreshes the two brand rows in place, just before the menu draws.
+    ///
+    /// In place rather than rebuilding the menu: reassigning `statusItem.menu` while it is opening
+    /// is a good way to get a menu that flickers or drops a click.
+    private func refreshBrandItems() {
+        // Menu construction and `menuNeedsUpdate` are both main-thread AppKit contexts.
+        let (trigger, last) = MainActor.assumeIsolated {
+            (ShortcutManager.recordTriggerDescription,
+             RecordingStore.shared.recordings.first(where: {
+                 $0.status == .completed && !$0.transcription.isEmpty
+             }))
+        }
+
+        triggerItem?.title = trigger
+            .map { "Start dictation — \($0)" }
+            ?? "Start dictation (no trigger set)"
+
+        // Hidden rather than absent when there's nothing to show — a row reading "nothing yet"
+        // is noise in a menu this small, and hiding keeps the item indices stable.
+        guard let item = lastTakeItem else { return }
+        guard let last else {
+            item.isHidden = true
+            return
+        }
+
+        item.isHidden = false
+        item.representedObject = last.transcription
+        // Serif, because it is the user's own words — the same rule the pill and the history rows
+        // follow. Menu items are AppKit, hence the NSFont bridge rather than the SwiftUI modifier.
+        item.attributedTitle = NSAttributedString(
+            string: Self.excerpt(last.transcription),
+            attributes: [.font: NSFont.osierTranscript(size: 13)])
+    }
+
+    /// First line of a transcription, clipped so one long dictation can't stretch the menu across
+    /// the screen.
+    private static func excerpt(_ text: String, limit: Int = 52) -> String {
+        let flattened = text
+            .replacingOccurrences(of: "\n", with: " ")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        guard flattened.count > limit else { return flattened }
+        return flattened.prefix(limit).trimmingCharacters(in: .whitespaces) + "…"
+    }
+
+    @objc private func copyLastTake(_ sender: NSMenuItem) {
+        guard let text = sender.representedObject as? String else { return }
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(text, forType: .string)
+    }
+
     @objc private func checkForUpdates() {
         NSApp.activate(ignoringOtherApps: true)
         Task { @MainActor in
@@ -382,6 +494,10 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, ObservableOb
     func menuNeedsUpdate(_ menu: NSMenu) {
         if menu === modelSubmenu {
             populateModelSubmenu()
+        } else if menu === statusItem?.menu {
+            // The trigger can be rebound and a new dictation can land at any time, so both brand
+            // rows are recomputed on every open rather than cached.
+            refreshBrandItems()
         }
     }
 
