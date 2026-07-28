@@ -26,6 +26,24 @@ class ShortcutManager {
         KeyboardShortcuts.getShortcut(for: .cancelRecording)?.description
     }
 
+    /// Presentable name of whatever currently starts a dictation — a mouse button, a
+    /// modifier-only chord, or the regular keyboard shortcut — resolved in the same priority
+    /// order `setupRecordingTrigger()` applies, so the answer always matches what is actually
+    /// listening. nil only if the regular shortcut has been cleared.
+    ///
+    /// Read live on each access rather than cached: the trigger can be changed from Settings at
+    /// any moment, and a menu advertising the wrong key is worse than one that says nothing.
+    @MainActor
+    static var recordTriggerDescription: String? {
+        if let button = MouseButton(rawValue: AppPreferences.shared.mouseButtonHotkey), button != .none {
+            return button.displayName
+        }
+        if let modifier = ModifierKey(rawValue: AppPreferences.shared.modifierOnlyHotkey), modifier != .none {
+            return modifier.displayName
+        }
+        return KeyboardShortcuts.getShortcut(for: .toggleRecord)?.description
+    }
+
     private var activeVm: IndicatorViewModel?
     private var holdWorkItem: DispatchWorkItem?
     private let holdThreshold: TimeInterval = 0.3
