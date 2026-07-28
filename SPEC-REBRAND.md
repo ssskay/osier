@@ -175,15 +175,43 @@ SpeakingStrand(state:, phase:, size:)   // .idle .recording .transcribing .error
 
 ## 4. Phase order
 
-| Phase | Commit | Gate |
+| Phase | Commit | Status |
 |---|---|---|
-| 0 | `SPEC-REBRAND.md` + decisions | **you sign off §0** |
-| 1 | `feat(brand): palette tokens + speaking-strand mark` | builds; no surface changed yet |
-| 2 | `feat(brand): restyle notch pill` | screenshots idle/recording × light/dark |
-| 3 | `feat(brand): restyle main window + settings chrome` | screenshots |
-| 4 | `feat(brand): menu bar` | hotkeys read live from ShortcutManager |
-| 5 | `feat(brand): generated app icon` | `Scripts/make-appicon.sh` reproducible |
-| 6 | `chore(brand): naming + quiet build scripts` | `run.sh` prints 3 lines on success |
+| 0 | `SPEC-REBRAND.md` + decisions | ✅ signed off |
+| 1 | `7cf62b6` palette tokens + speaking-strand mark | ✅ builds; contact sheet rendered |
+| 2 | `175825d` restyle the notch pill | ✅ builds — **not yet seen on screen** |
+| 3 | `c6d923d` restyle main window, settings, onboarding | ✅ builds — **not yet seen on screen** |
+| 4 | `0723d9b` menu bar | ✅ builds — **not yet seen on screen** |
+| 5 | `c8c7c08` generated app icon | ✅ rendered and reviewed |
+| 6 | `875276d` quiet the build scripts | ✅ verified by running it |
 
-Screenshots land in `docs/rebrand/` as `<surface>-<state>-<light\|dark>-<before\|after>.png`.
-Every phase checked in both appearances; a phase isn't done until both are shot.
+Plus `0c57fc4` — pre-existing in-flight work, split out so the phase commits aren't burying it.
+
+### Outstanding: screenshots
+
+`docs/rebrand/` has the two surfaces that could be rendered offline: `mark-states.png`
+(every state × size × background) and `appicon-1024.png`. The three *live* surfaces — notch
+pill, main window, menu bar — are unverified visually. Everything compiles and the colour
+choices are reasoned, but nobody has looked at them.
+
+They need a person at the keyboard, for two reasons: a full-screen grab captures whatever else
+is open, and putting the pill into its recording state means opening the microphone. Neither
+is something to do unattended.
+
+When you're ready:
+
+```bash
+./run.sh
+```
+
+Then, for each of notch pill / main window / menu bar, in **both** appearances: capture idle,
+start a dictation, capture recording. `⌘⇧4` then `space` grabs a single window without the rest
+of the desktop. Drop them in `docs/rebrand/` as
+`<surface>-<state>-<light|dark>.png`.
+
+"Before" shots are no longer capturable — the code has moved. `git stash && git checkout
+edde3aa` would rebuild the old look if a true before/after matters.
+
+Most likely to need tuning once seen, in order: the pill's cream/straw tones against the black
+notch at small sizes; whether the mark reads at 16pt in the menu bar; and the wicker cream in
+the main window under dark appearance, where `surface` and `surfaceRaised` sit close together.
