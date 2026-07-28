@@ -82,6 +82,14 @@ enum Osier {
     static let error = dyn(light: 0x8C3A1E, dark: 0xD98668)
     static let errorWash = dyn(light: 0x8C3A1E, dark: 0xD98668, alpha: 0.14)
 
+    /// Search-match highlight, and the text sitting on it.
+    ///
+    /// Fixed rather than appearance-reactive, unlike everything else here: the two have to stay
+    /// legible *as a pair*, and a highlight that flips with the system appearance while the text
+    /// on it flips independently can land dark-on-dark.
+    static let highlight = Color(nsColor: srgb(0xE8C766))
+    static let onHighlight = Color(nsColor: srgb(0x1F1B12))
+
     /// Success.
     static let success = dyn(light: 0x3B6D11, dark: 0x8FC44F)
     static let successWash = dyn(light: 0x3B6D11, dark: 0x8FC44F, alpha: 0.14)

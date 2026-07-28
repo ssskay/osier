@@ -241,9 +241,9 @@ struct RemoteServerSettingsView<PresetRow: View>: View {
         case .failure(let message):
             Text("✕ \(message)")
                 .font(.system(size: 11, weight: .semibold))
-                .foregroundColor(.red)
+                .foregroundColor(Osier.error)
                 .padding(.horizontal, 9).padding(.vertical, 2)
-                .background(Capsule().fill(Color.red.opacity(0.12)))
+                .background(Capsule().fill(Osier.error.opacity(0.12)))
                 .lineLimit(1)
         }
     }

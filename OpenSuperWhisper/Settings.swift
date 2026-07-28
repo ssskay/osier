@@ -248,7 +248,26 @@ class SettingsViewModel: ObservableObject {
     @Published var customDictionaryEntries: [CustomDictionaryEntry] {
         didSet {
             AppPreferences.shared.customDictionaryEntries = customDictionaryEntries
+            refreshDictionarySuggestions()
         }
+    }
+
+    /// Auto-learned terms awaiting the user's approve/dismiss (see AutoDictionary).
+    @Published var dictionarySuggestions: [String] = []
+
+    func refreshDictionarySuggestions() {
+        dictionarySuggestions = AutoDictionary.suggestions(existingEntries: customDictionaryEntries)
+    }
+
+    func acceptSuggestion(_ term: String) {
+        customDictionaryEntries.append(CustomDictionaryEntry(original: term, replacement: term))
+        AutoDictionary.forget(term)
+        refreshDictionarySuggestions()
+    }
+
+    func dismissSuggestion(_ term: String) {
+        AutoDictionary.dismiss(term)
+        refreshDictionarySuggestions()
     }
 
     @Published var useBeamSearch: Bool {
@@ -653,6 +672,9 @@ class SettingsViewModel: ObservableObject {
         loadAvailableModels()
         initializeDownloadableModels()
         initializeFluidAudioModels()
+        // Property observers don't fire during init, so seed the auto-learned
+        // dictionary suggestions explicitly. (#auto-dictionary)
+        refreshDictionarySuggestions()
 
         // Reflect external model changes (the menu-bar Model picker) while Settings is open.
         modelSyncObserver = NotificationCenter.default.addObserver(
@@ -1178,15 +1200,18 @@ struct SettingsView: View {
     @State private var previousModelURL: URL?
     @State private var appLanguage = LanguageManager.selected
     @State private var langNeedsRelaunch = false
-    @State private var cancelKey = "esc"
+    @State private var cancelKey = "none"
 
     /// Curated cancel-recording keys (the recorder can't capture Esc / single special keys).
+    /// "None" is the default: cancelling a recording is rare, and a bare Esc binding steals
+    /// the key from whatever app you're dictating into.
     struct CancelKeyChoice: Identifiable {
         let id: String
         let label: String
-        let shortcut: KeyboardShortcuts.Shortcut
+        let shortcut: KeyboardShortcuts.Shortcut?
     }
     static let cancelKeyChoices: [CancelKeyChoice] = [
+        .init(id: "none", label: "None", shortcut: nil),
         .init(id: "esc", label: "Esc", shortcut: .init(.escape)),
         .init(id: "cmd-esc", label: "⌘ Esc", shortcut: .init(.escape, modifiers: .command)),
         .init(id: "opt-esc", label: "⌥ Esc", shortcut: .init(.escape, modifiers: .option)),
@@ -1194,8 +1219,8 @@ struct SettingsView: View {
         .init(id: "cmd-period", label: "⌘ .", shortcut: .init(.period, modifiers: .command)),
     ]
     static func currentCancelKeyID() -> String {
-        let current = KeyboardShortcuts.getShortcut(for: .escape)
-        return cancelKeyChoices.first { $0.shortcut == current }?.id ?? "esc"
+        guard let current = KeyboardShortcuts.getShortcut(for: .cancelRecording) else { return "none" }
+        return cancelKeyChoices.first { $0.shortcut == current }?.id ?? "none"
     }
 
     /// One-line description of the selected engine, to help users choose.
@@ -1255,7 +1280,7 @@ struct SettingsView: View {
     /// "Feedback" tab — recruit beta testers and route every kind of report (#beta).
     private var feedbackSettings: some View {
         SPane(title: "Feedback", subtitle: "Help us improve") {
-            Text("OpenSuperWhisper gets better with your feedback. Hit a bug, or have an idea? Tell us — every report helps make it more stable.")
+            Text("Osier gets better with your feedback. Hit a bug, or have an idea? Tell us — every report helps make it more stable.")
                 .font(.system(size: 12))
                 .foregroundColor(STheme.hint)
                 .fixedSize(horizontal: false, vertical: true)
@@ -1704,14 +1729,14 @@ struct SettingsView: View {
         case .authFailed:
             Text("✕ The server rejected the API key")
                 .font(.system(size: 11))
-                .foregroundColor(.red)
+                .foregroundColor(Osier.error)
                 .fixedSize(horizontal: false, vertical: true)
         case .unreachable:
             Text(isRemote
                 ? "✕ Can't reach the server — check the URL"
                 : "✕ Can't reach Ollama — is it running? (ollama serve)")
                 .font(.system(size: 11))
-                .foregroundColor(.red)
+                .foregroundColor(Osier.error)
                 .fixedSize(horizontal: false, vertical: true)
         }
     }
@@ -1810,7 +1835,7 @@ struct SettingsView: View {
                         Text("Boost recognition")
                             .font(.system(size: 12)).foregroundColor(STheme.text)
                         STag("Advanced")
-                        InfoButton(text: "Also bias the model toward these terms while listening, not just fix them afterward. Helps rare, distinctive words (e.g. “Kubernetes”) — but can over-correct short, common ones. Leave off if it replaces too much.")
+                        InfoButton(text: "Also bias the model toward these terms while listening, not just fix them afterward. Helps rare, distinctive words (e.g. “Kubernetes”). Short single words (under \(CustomDictionary.minimumBoostLength) letters) are skipped automatically — they over-correct ordinary speech — but they still get replaced afterward as usual.")
                         Spacer()
                         SToggle(isOn: $viewModel.customDictionaryBoostEnabled)
                     }
@@ -1875,6 +1900,52 @@ struct SettingsView: View {
                     }
                     .controlSize(.small)
                     .padding(.leading, 16)
+
+                    // Auto-learned suggestions: terms dictated 3+ times that aren't in the
+                    // dictionary yet. Approve to lock in spelling/casing (+ boost), dismiss
+                    // to never see again. (#auto-dictionary)
+                    if !viewModel.dictionarySuggestions.isEmpty {
+                        VStack(alignment: .leading, spacing: 6) {
+                            HStack(spacing: 6) {
+                                Text("Suggested from your dictations")
+                                    .font(.system(size: 11, weight: .semibold))
+                                    .foregroundColor(STheme.sectionTitle)
+                                InfoButton(text: "Words you've dictated 3 or more times that aren't in the dictionary yet. Adding locks in their spelling and casing; dismissing hides them permanently.")
+                            }
+                            ForEach(viewModel.dictionarySuggestions, id: \.self) { term in
+                                HStack(spacing: 8) {
+                                    Text(term)
+                                        .font(.system(size: 12))
+                                        .foregroundColor(STheme.text)
+                                    Spacer()
+                                    Button {
+                                        viewModel.acceptSuggestion(term)
+                                    } label: {
+                                        Label("Add", systemImage: "plus.circle.fill")
+                                            .font(.system(size: 11, weight: .medium))
+                                    }
+                                    .buttonStyle(.plain)
+                                    .foregroundColor(.accentColor)
+                                    .help("Add to dictionary")
+                                    Button {
+                                        viewModel.dismissSuggestion(term)
+                                    } label: {
+                                        Image(systemName: "xmark.circle")
+                                            .font(.system(size: 11))
+                                            .foregroundColor(STheme.hint)
+                                    }
+                                    .buttonStyle(.plain)
+                                    .help("Never suggest this")
+                                }
+                                .padding(.horizontal, 12).padding(.vertical, 5)
+                            }
+                        }
+                        .padding(.vertical, 8)
+                        .background(RoundedRectangle(cornerRadius: 9).fill(STheme.cardBg))
+                        .overlay(RoundedRectangle(cornerRadius: 9).stroke(STheme.border, lineWidth: 1))
+                        .padding(.leading, 16)
+                        .onAppear { viewModel.refreshDictionarySuggestions() }
+                    }
                 }
             }
 
@@ -2011,7 +2082,7 @@ struct SettingsView: View {
                             .controlSize(.small)
                     }
                 }
-                SRow(title: "Launch at login", hint: "Start OpenSuperWhisper automatically when you log in.") {
+                SRow(title: "Launch at login", hint: "Start Osier automatically when you log in.") {
                     SToggle(isOn: Binding(
                         get: { launchAtLogin.isEnabled },
                         set: { launchAtLogin.setEnabled($0) }
@@ -2207,7 +2278,8 @@ struct SettingsView: View {
                 SRow(title: "Hold to record", hint: "Hold the shortcut to record, release to stop") {
                     SToggle(isOn: $viewModel.holdToRecord)
                 }
-                SRow(title: "Cancel shortcut") {
+                SRow(title: "Cancel recording (optional)",
+                     hint: "Unbound by default, so Esc keeps working in the app you're dictating into") {
                     Picker("", selection: $cancelKey) {
                         ForEach(SettingsView.cancelKeyChoices) { choice in
                             Text(choice.label).tag(choice.id)
@@ -2217,9 +2289,12 @@ struct SettingsView: View {
                     .labelsHidden()
                     .fixedSize()
                     .onChange(of: cancelKey) { _, newValue in
-                        if let choice = SettingsView.cancelKeyChoices.first(where: { $0.id == newValue }) {
-                            KeyboardShortcuts.setShortcut(choice.shortcut, for: .escape)
-                        }
+                        // Skip when the picker is merely catching up with what's already bound
+                        // (`.onAppear` below) — otherwise the sync itself would rebind the key.
+                        guard newValue != SettingsView.currentCancelKeyID(),
+                              let choice = SettingsView.cancelKeyChoices.first(where: { $0.id == newValue })
+                        else { return }
+                        KeyboardShortcuts.setShortcut(choice.shortcut, for: .cancelRecording)
                     }
                     .onAppear { cancelKey = SettingsView.currentCancelKeyID() }
                 }
