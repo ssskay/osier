@@ -54,7 +54,7 @@ struct AppleSpeechModelSection: View {
             }
 
             if let errorMessage {
-                Text(errorMessage).font(.system(size: 11)).foregroundColor(.red)
+                Text(errorMessage).font(.system(size: 11)).foregroundColor(Osier.error)
             }
 
             if variants.count > 1 {

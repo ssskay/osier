@@ -22,7 +22,7 @@ struct UpdatesView: View {
             if let update = availableUpdate {
                 updateBanner(update)
             }
-            SRow(title: "OpenSuperWhisper \(UpdateChecker.currentVersion)",
+            SRow(title: "Osier \(UpdateChecker.currentVersion)",
                  hint: "Updates install in place, then the app relaunches.") {
                 Button(action: { Task { await checkForUpdates() } }) {
                     if isChecking {
@@ -42,7 +42,7 @@ struct UpdatesView: View {
             if let errorMessage {
                 Text(errorMessage)
                     .font(.system(size: 11))
-                    .foregroundColor(.red)
+                    .foregroundColor(Osier.error)
             }
         }
     }

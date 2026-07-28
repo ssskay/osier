@@ -340,7 +340,7 @@ struct OnboardingView: View {
                         .fontWeight(.medium)
                         .foregroundColor(.secondary)
                     
-                    Text("OpenSuperWhisper")
+                    Text("Osier")
                         .font(.system(size: 32, weight: .bold))
                         .foregroundStyle(
                             .white
@@ -423,7 +423,7 @@ struct OnboardingView: View {
                         if viewModel.selectedShortcut == .rightOption {
                             Text("⚠️ Single modifier key mode requires Input Monitoring permission (macOS needs it to detect modifier keys globally). Only modifier key events are monitored — no regular keystrokes.")
                                 .font(.caption2)
-                                .foregroundColor(.orange)
+                                .foregroundColor(Osier.caution)
                         }
 
                         Text("You can change this later in Settings")
@@ -470,7 +470,7 @@ struct OnboardingView: View {
                             .padding(10)
                             .background(
                                 RoundedRectangle(cornerRadius: 8)
-                                    .stroke(viewModel.remoteSelected ? Color.accentColor : Color.gray.opacity(0.3),
+                                    .stroke(viewModel.remoteSelected ? Color.accentColor : Osier.hairline.opacity(0.6),
                                             lineWidth: viewModel.remoteSelected ? 2 : 1)
                             )
                             .contentShape(Rectangle())
@@ -511,7 +511,7 @@ struct OnboardingView: View {
                 // Subtle gradient overlay
                 LinearGradient(
                     colors: [
-                        Color.blue.opacity(0.02),
+                        Osier.mark.opacity(0.02),
                         Color.clear,
                         Color.purple.opacity(0.02)
                     ],
@@ -625,11 +625,11 @@ struct OnboardingUnifiedModelItemView: View {
         .background(
             RoundedRectangle(cornerRadius: 10)
                 .fill(isSelected ? Color(.controlBackgroundColor).opacity(0.8) : Color(.controlBackgroundColor).opacity(0.5))
-                .shadow(color: isSelected ? Color.blue.opacity(0.2) : Color.black.opacity(0.05), radius: isSelected ? 8 : 4, x: 0, y: 2)
+                .shadow(color: isSelected ? Osier.mark.opacity(0.2) : Color.black.opacity(0.05), radius: isSelected ? 8 : 4, x: 0, y: 2)
         )
         .overlay(
             RoundedRectangle(cornerRadius: 10)
-                .stroke(isSelected ? Color.blue.opacity(0.3) : Color.clear, lineWidth: 1.5)
+                .stroke(isSelected ? Osier.mark.opacity(0.3) : Color.clear, lineWidth: 1.5)
         )
         .contentShape(Rectangle())
         .onTapGesture {
@@ -815,11 +815,11 @@ struct OnboardingShortcutCard: View {
             .background(
                 RoundedRectangle(cornerRadius: 10)
                     .fill(isSelected ? Color(.controlBackgroundColor).opacity(0.8) : Color(.controlBackgroundColor).opacity(0.5))
-                    .shadow(color: isSelected ? Color.blue.opacity(0.2) : Color.black.opacity(0.05), radius: isSelected ? 8 : 4, x: 0, y: 2)
+                    .shadow(color: isSelected ? Osier.mark.opacity(0.2) : Color.black.opacity(0.05), radius: isSelected ? 8 : 4, x: 0, y: 2)
             )
             .overlay(
                 RoundedRectangle(cornerRadius: 10)
-                    .stroke(isSelected ? Color.blue.opacity(0.3) : Color.clear, lineWidth: 1.5)
+                    .stroke(isSelected ? Osier.mark.opacity(0.3) : Color.clear, lineWidth: 1.5)
             )
         }
         .buttonStyle(.plain)

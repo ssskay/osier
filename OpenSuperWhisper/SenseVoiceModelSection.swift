@@ -20,7 +20,7 @@ struct SenseVoiceModelSection: View {
             row
 
             if let errorMessage {
-                Text(errorMessage).font(.caption).foregroundColor(.red)
+                Text(errorMessage).font(.caption).foregroundColor(Osier.error)
             }
         }
         .padding()

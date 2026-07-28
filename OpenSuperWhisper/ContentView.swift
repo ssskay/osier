@@ -27,6 +27,8 @@ class ContentViewModel: ObservableObject {
     @Published var microphoneService = MicrophoneService.shared
     @Published var shouldClearSearch = false
     @Published var errorMessage: String?
+    /// Lifetime dictation stats for the header bar (nil until first load completes).
+    @Published var stats: RecordingStore.DictationStats?
 
     private var currentPage = 0
     private let pageSize = 100
@@ -72,10 +74,26 @@ class ContentViewModel: ObservableObject {
                 }
             }
             .store(in: &cancellables)
+
+        // Keep the stats header current: recompute whenever a recording lands or is
+        // deleted (same notification the retention pruning uses).
+        NotificationCenter.default.publisher(for: RecordingStore.recordingsDidUpdateNotification)
+            .receive(on: RunLoop.main)
+            .sink { [weak self] _ in self?.refreshStats() }
+            .store(in: &cancellables)
     }
-    
+
     func loadInitialData() {
         startFreshLoad(query: "")
+        refreshStats()
+    }
+
+    func refreshStats() {
+        Task { [weak self] in
+            guard let self else { return }
+            let stats = try? await self.recordingStore.fetchStats()
+            await MainActor.run { self.stats = stats }
+        }
     }
 
     /// Resets paging and starts a fresh page-0 load. Bumps the load generation so
@@ -185,9 +203,9 @@ class ContentViewModel: ObservableObject {
     }
 
     func startRecording() {
-        // Arm Esc-to-cancel for this main-window recording via a LOCAL key monitor: the
-        // global `.escape` shortcut is unreliable while our own window is frontmost, and a
-        // local monitor also needs no Input-Monitoring grant. Removed again on stop/cancel.
+        // Arm cancel-to-discard for this main-window recording via a LOCAL key monitor: the
+        // global shortcut is unreliable while our own window is frontmost, and a local
+        // monitor also needs no Input-Monitoring grant. Removed again on stop/cancel.
         installEscapeMonitor()
 
         // Capture where the dictation is happening (frontmost app + browser site) and
@@ -225,13 +243,14 @@ class ContentViewModel: ObservableObject {
         state = .idle
     }
 
-    /// Local key monitor that cancels the recording on the configured cancel shortcut
-    /// (default: plain Esc). Local — fires while our window is key, no permission needed.
+    /// Local key monitor that cancels the recording on the configured cancel shortcut.
+    /// Local — fires while our window is key, no permission needed. No-op when no cancel
+    /// key is bound (the default), so Escape passes through untouched.
     private func installEscapeMonitor() {
         guard escapeMonitor == nil else { return }
         escapeMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
             guard let self, self.state == .recording || self.state == .connecting else { return event }
-            guard let shortcut = KeyboardShortcuts.getShortcut(for: .escape), let key = shortcut.key,
+            guard let shortcut = KeyboardShortcuts.getShortcut(for: .cancelRecording), let key = shortcut.key,
                   Int(event.keyCode) == key.rawValue,
                   event.modifierFlags.intersection([.command, .option, .control, .shift]) == shortcut.modifiers
             else { return event }
@@ -442,7 +461,7 @@ struct ContentView: View {
                     // Search bar
                     HStack {
                         Image(systemName: "magnifyingglass")
-                            .foregroundColor(.secondary)
+                            .foregroundColor(Osier.inkSoft)
 
                         TextField("Search in transcriptions", text: $searchText)
                             .textFieldStyle(PlainTextFieldStyle())
@@ -458,7 +477,7 @@ struct ContentView: View {
                                 viewModel.search(query: "")
                             }) {
                                 Image(systemName: "xmark.circle.fill")
-                                    .foregroundColor(.secondary)
+                                    .foregroundColor(Osier.inkSoft)
                                     .imageScale(.medium)
                             }
                             .buttonStyle(.plain)
@@ -473,6 +492,14 @@ struct ContentView: View {
                     .cornerRadius(20)
                     .padding([.horizontal, .top])
 
+                    // Lifetime stats (Willow homage, minus the streak). Hidden until there's
+                    // at least one completed dictation and while searching.
+                    if let stats = viewModel.stats, stats.totalWords > 0, debouncedSearchText.isEmpty {
+                        DictationStatsBar(stats: stats)
+                            .padding(.horizontal)
+                            .padding(.top, 10)
+                    }
+
                     ScrollView(showsIndicators: false) {
                         if viewModel.recordings.isEmpty {
                             VStack(spacing: 16) {
@@ -480,32 +507,32 @@ struct ContentView: View {
                                     // Show "no results" for search
                                     Image(systemName: "magnifyingglass")
                                         .font(.system(size: 40))
-                                        .foregroundColor(.secondary)
+                                        .foregroundColor(Osier.inkSoft)
                                         .padding(.top, 40)
 
                                     Text("No results found")
                                         .font(.headline)
-                                        .foregroundColor(.secondary)
+                                        .foregroundColor(Osier.inkSoft)
 
                                     Text("Try different search terms")
                                         .font(.subheadline)
-                                        .foregroundColor(.secondary)
+                                        .foregroundColor(Osier.inkSoft)
                                         .multilineTextAlignment(.center)
                                         .padding(.horizontal)
                                 } else {
                                     // Show "start recording" tip
                                     Image(systemName: "arrow.down.circle")
                                         .font(.system(size: 40))
-                                        .foregroundColor(.secondary)
+                                        .foregroundColor(Osier.inkSoft)
                                         .padding(.top, 40)
 
                                     Text("No recordings yet")
                                         .font(.headline)
-                                        .foregroundColor(.secondary)
+                                        .foregroundColor(Osier.inkSoft)
 
                                     Text("Tap the record button below to get started")
                                         .font(.subheadline)
-                                        .foregroundColor(.secondary)
+                                        .foregroundColor(Osier.inkSoft)
                                         .multilineTextAlignment(.center)
                                         .padding(.horizontal)
 
@@ -513,26 +540,26 @@ struct ContentView: View {
                                         VStack(spacing: 8) {
                                             Text("Pro Tip:")
                                                 .font(.subheadline)
-                                                .foregroundColor(.secondary)
+                                                .foregroundColor(Osier.inkSoft)
 
                                             HStack(spacing: 4) {
                                                 Text("Press")
                                                     .font(.subheadline)
-                                                    .foregroundColor(.secondary)
+                                                    .foregroundColor(Osier.inkSoft)
                                                 Text(shortcut.description)
                                                     .font(.system(size: 16, weight: .medium))
                                                     .padding(.horizontal, 6)
                                                     .padding(.vertical, 3)
-                                                    .background(Color.secondary.opacity(0.2))
+                                                    .background(Osier.hairline.opacity(0.2))
                                                     .cornerRadius(6)
                                                 Text("anywhere")
                                                     .font(.subheadline)
-                                                    .foregroundColor(.secondary)
+                                                    .foregroundColor(Osier.inkSoft)
                                             }
 
                                             Text("to quickly record and paste text")
                                                 .font(.subheadline)
-                                                .foregroundColor(.secondary)
+                                                .foregroundColor(Osier.inkSoft)
                                         }
                                         .padding(.top, 16)
                                     }
@@ -616,18 +643,18 @@ struct ContentView: View {
                         if let engineError = viewModel.transcriptionService.engineError {
                             HStack(spacing: 6) {
                                 Image(systemName: "exclamationmark.triangle.fill")
-                                    .foregroundColor(.red)
+                                    .foregroundColor(Osier.error)
                                     .imageScale(.small)
                                 Text(engineError)
                                     .font(.caption)
-                                    .foregroundColor(.red)
+                                    .foregroundColor(Osier.error)
                                     .lineLimit(2)
                                 Button("Retry") {
                                     viewModel.transcriptionService.reloadEngine()
                                 }
                                 .font(.caption)
                                 .buttonStyle(.plain)
-                                .foregroundColor(.accentColor)
+                                .foregroundColor(Osier.mark)
                             }
                             .padding(.horizontal, 16)
                             .transition(.opacity.combined(with: .move(edge: .top)))
@@ -637,11 +664,11 @@ struct ContentView: View {
                         if let errorMessage = viewModel.errorMessage {
                             HStack(spacing: 6) {
                                 Image(systemName: "exclamationmark.triangle.fill")
-                                    .foregroundColor(.orange)
+                                    .foregroundColor(Osier.caution)
                                     .imageScale(.small)
                                 Text(errorMessage)
                                     .font(.caption)
-                                    .foregroundColor(.secondary)
+                                    .foregroundColor(Osier.inkSoft)
                             }
                             .transition(.opacity.combined(with: .move(edge: .top)))
                             .animation(.easeInOut, value: viewModel.errorMessage)
@@ -654,21 +681,21 @@ struct ContentView: View {
                                 HStack(spacing: 6) {
                                     Text(currentShortcutDescription)
                                         .font(.caption)
-                                        .foregroundColor(.secondary)
+                                        .foregroundColor(Osier.inkSoft)
                                     Text("to show mini recorder")
                                         .font(.caption)
-                                        .foregroundColor(.secondary)
+                                        .foregroundColor(Osier.inkSoft)
                                 }
                                 .padding(.leading, 4)
 
                                 // Подсказка о drag-n-drop
                                 HStack(spacing: 6) {
                                     Image(systemName: "arrow.down.doc.fill")
-                                        .foregroundColor(.secondary)
+                                        .foregroundColor(Osier.inkSoft)
                                         .imageScale(.medium)
                                     Text("Drop audio file here to transcribe")
                                         .font(.caption)
-                                        .foregroundColor(.secondary)
+                                        .foregroundColor(Osier.inkSoft)
                                 }
                                 .padding(.leading, 4)
                             }
@@ -684,7 +711,7 @@ struct ContentView: View {
                                     }) {
                                         Image(systemName: "trash")
                                             .font(.title3)
-                                            .foregroundColor(.secondary)
+                                            .foregroundColor(Osier.inkSoft)
                                             .frame(width: 32, height: 32)
                                             .background(ThemePalette.panelSurface(colorScheme))
                                             .overlay(
@@ -715,7 +742,7 @@ struct ContentView: View {
                                 }) {
                                     Image(systemName: "gear")
                                         .font(.title3)
-                                        .foregroundColor(.secondary)
+                                        .foregroundColor(Osier.inkSoft)
                                         .frame(width: 32, height: 32)
                                         .background(ThemePalette.panelSurface(colorScheme))
                                         .overlay(
@@ -839,7 +866,7 @@ struct PermissionRow: View {
         VStack(alignment: .leading, spacing: 10) {
             HStack {
                 Image(systemName: isGranted ? "checkmark.circle.fill" : "xmark.circle.fill")
-                    .foregroundColor(isGranted ? .green : .red)
+                    .foregroundColor(isGranted ? Osier.success : Osier.error)
 
                 Text(title)
                     .font(.headline)
@@ -856,7 +883,7 @@ struct PermissionRow: View {
 
             Text(description)
                 .font(.subheadline)
-                .foregroundColor(.secondary)
+                .foregroundColor(Osier.inkSoft)
         }
         .padding()
         .background(ThemePalette.panelSurface(colorScheme))
@@ -882,7 +909,7 @@ struct RecordingRow: View {
                 let secs = max(0, Int(context.date.timeIntervalSince(startedAt)))
                 Text(String(format: "%d:%02d", secs / 60, secs % 60))
                     .font(.caption.monospacedDigit())
-                    .foregroundColor(.secondary)
+                    .foregroundColor(Osier.inkSoft)
             }
         }
     }
@@ -944,7 +971,7 @@ struct RecordingRow: View {
                     if let sourceFileName = recording.sourceFileName {
                         Text(sourceFileName)
                             .font(.subheadline.weight(.medium))
-                            .foregroundColor(.primary)
+                            .foregroundColor(Osier.ink)
                             .lineLimit(1)
                             .truncationMode(.middle)
                     }
@@ -953,16 +980,16 @@ struct RecordingRow: View {
                         if recording.status == .pending {
                             Image(systemName: "clock")
                                 .font(.caption)
-                                .foregroundColor(.secondary)
+                                .foregroundColor(Osier.inkSoft)
                         } else {
                            
                             ZStack {
                                 Circle()
-                                    .stroke(Color.secondary.opacity(0.2), lineWidth: 2)
+                                    .stroke(Osier.hairline.opacity(0.2), lineWidth: 2)
                                 
                                 Circle()
                                     .trim(from: 0, to: CGFloat(recording.progress))
-                                    .stroke(Color.secondary, style: StrokeStyle(lineWidth: 2, lineCap: .round))
+                                    .stroke(Osier.mark, style: StrokeStyle(lineWidth: 2, lineCap: .round))
                                     .rotationEffect(.degrees(-90))
                                     .animation(.linear(duration: 0.1), value: recording.progress)
                             }
@@ -970,7 +997,7 @@ struct RecordingRow: View {
 
                             Text("\(Int(recording.progress * 100))%")
                                 .font(.caption.monospacedDigit())
-                                .foregroundColor(.secondary)
+                                .foregroundColor(Osier.inkSoft)
                                 .contentTransition(.numericText())
                                 .animation(.linear(duration: 0.1), value: recording.progress)
 
@@ -979,7 +1006,7 @@ struct RecordingRow: View {
                         
                         Text(statusText)
                             .font(.caption)
-                            .foregroundColor(.secondary)
+                            .foregroundColor(Osier.inkSoft)
                         
                         Spacer()
                     }
@@ -996,16 +1023,16 @@ struct RecordingRow: View {
                     HStack(spacing: 6) {
                         Image(systemName: "exclamationmark.triangle.fill")
                             .font(.caption)
-                            .foregroundColor(.red)
+                            .foregroundColor(Osier.error)
                         Text("Transcription failed")
                             .font(.caption)
-                            .foregroundColor(.red)
+                            .foregroundColor(Osier.error)
                     }
                     
                     if !recording.transcription.isEmpty {
                         Text(recording.transcription)
                             .font(.caption)
-                            .foregroundColor(.secondary)
+                            .foregroundColor(Osier.inkSoft)
                     }
                 }
                 .padding(.horizontal, 12)
@@ -1028,7 +1055,7 @@ struct RecordingRow: View {
             } else if !isPending {
                 Text("No speech detected")
                     .font(.body)
-                    .foregroundColor(.secondary)
+                    .foregroundColor(Osier.inkSoft)
                     .padding(.horizontal, 12)
                     .padding(.top, 8)
             }
@@ -1077,7 +1104,7 @@ struct RecordingRow: View {
                                 // Orange only when this transcription came from the remote
                                 // engine's local fallback (server was unreachable), so a
                                 // surprising result is easy to spot back in the history.
-                                .foregroundColor(recording.wasFallback ? .orange : .secondary)
+                                .foregroundColor(recording.wasFallback ? Osier.caution : Osier.inkSoft)
                                 .help(recording.wasFallback
                                       ? "Local fallback — the remote server was unreachable"
                                       : "")
@@ -1086,7 +1113,7 @@ struct RecordingRow: View {
                         .font(.caption2)
                     }
                 }
-                .foregroundColor(.secondary)
+                .foregroundColor(Osier.inkSoft)
                 
                 if isRegenerating {
                     Spacer()
@@ -1095,15 +1122,15 @@ struct RecordingRow: View {
                         if recording.status == .pending {
                             Image(systemName: "clock")
                                 .font(.caption)
-                                .foregroundColor(.secondary)
+                                .foregroundColor(Osier.inkSoft)
                         } else {
                             ZStack {
                                 Circle()
-                                    .stroke(Color.secondary.opacity(0.2), lineWidth: 2)
+                                    .stroke(Osier.hairline.opacity(0.2), lineWidth: 2)
                                 
                                 Circle()
                                     .trim(from: 0, to: CGFloat(recording.progress))
-                                    .stroke(Color.secondary, style: StrokeStyle(lineWidth: 2, lineCap: .round))
+                                    .stroke(Osier.mark, style: StrokeStyle(lineWidth: 2, lineCap: .round))
                                     .rotationEffect(.degrees(-90))
                                     .animation(.linear(duration: 0.1), value: recording.progress)
                             }
@@ -1111,7 +1138,7 @@ struct RecordingRow: View {
 
                             Text("\(Int(recording.progress * 100))%")
                                 .font(.caption.monospacedDigit())
-                                .foregroundColor(.secondary)
+                                .foregroundColor(Osier.inkSoft)
                                 .contentTransition(.numericText())
                                 .animation(.linear(duration: 0.1), value: recording.progress)
 
@@ -1120,7 +1147,7 @@ struct RecordingRow: View {
                         
                         Text(statusText)
                             .font(.caption)
-                            .foregroundColor(.secondary)
+                            .foregroundColor(Osier.inkSoft)
                     }
                     .transition(.opacity)
                 
@@ -1153,7 +1180,7 @@ struct RecordingRow: View {
                         }) {
                             Image(systemName: "doc.on.doc.fill")
                                 .font(.system(size: 18))
-                                .foregroundColor(.secondary)
+                                .foregroundColor(Osier.inkSoft)
                         }
                         .buttonStyle(.plain)
                         .help("Copy entire text")
@@ -1168,7 +1195,7 @@ struct RecordingRow: View {
                             Button(action: { onRegenerate(nil) }) {
                                 Image(systemName: "arrow.clockwise")
                                     .font(.system(size: 18))
-                                    .foregroundColor(.secondary)
+                                    .foregroundColor(Osier.inkSoft)
                             }
                             .buttonStyle(.plain)
                             .help("Regenerate (current model)")
@@ -1184,7 +1211,7 @@ struct RecordingRow: View {
                             } label: {
                                 Image(systemName: "chevron.down")
                                     .font(.system(size: 9, weight: .semibold))
-                                    .foregroundColor(.secondary)
+                                    .foregroundColor(Osier.inkSoft)
                             }
                             .menuStyle(.button)
                             .menuIndicator(.hidden)
@@ -1204,7 +1231,7 @@ struct RecordingRow: View {
                         }) {
                             Image(systemName: "trash.fill")
                                 .font(.system(size: 18))
-                                .foregroundColor(.secondary)
+                                .foregroundColor(Osier.inkSoft)
                         }
                         .buttonStyle(.plain)
                         .transition(.opacity)
@@ -1238,7 +1265,7 @@ struct ShimmerOverlay: View {
     var body: some View {
         GeometryReader { geometry in
             RoundedRectangle(cornerRadius: 6)
-                .fill(Color.secondary.opacity(0.08))
+                .fill(Osier.hairline.opacity(0.08))
                 .overlay(
                     RoundedRectangle(cornerRadius: 6)
                         .fill(
@@ -1309,8 +1336,8 @@ struct TranscriptionView: View {
             while let range = text.range(of: query, options: searchOptions, range: searchStartIndex..<text.endIndex) {
                 guard !Task.isCancelled else { return }
                 if let attributedRange = Range(range, in: attributedString) {
-                    attributedString[attributedRange].backgroundColor = .yellow
-                    attributedString[attributedRange].foregroundColor = .black
+                    attributedString[attributedRange].backgroundColor = Osier.highlight
+                    attributedString[attributedRange].foregroundColor = Osier.onHighlight
                 }
                 searchStartIndex = range.upperBound
             }
@@ -1351,7 +1378,7 @@ struct TranscriptionView: View {
                                 .lineLimit(3)
                                 .frame(maxWidth: .infinity, alignment: .leading)
                                 .textSelection(.enabled)
-                                .foregroundColor(.primary)
+                                .foregroundColor(Osier.ink)
                         }
                         .buttonStyle(.plain)
                     } else {
@@ -1363,6 +1390,11 @@ struct TranscriptionView: View {
                     }
                 }
             }
+            // Every transcript in the history renders through this one view, so the brand's
+            // serif/sans split lands here: the user's own words are set in serif while the
+            // surrounding chrome ("Show more", timestamps, model tags) stays SF Pro.
+            .transcriptType()
+            .foregroundColor(Osier.ink)
             .padding(8)
 
             if hasMoreLines {
@@ -1412,7 +1444,7 @@ struct MicrophonePickerIconView: View {
         }) {
             Image(systemName: microphoneService.availableMicrophones.isEmpty ? "mic.slash" : "mic.fill")
                 .font(.title3)
-                .foregroundColor(.secondary)
+                .foregroundColor(Osier.inkSoft)
                 .frame(width: 32, height: 32)
                 .background(ThemePalette.panelSurface(colorScheme))
                 .overlay(
@@ -1427,7 +1459,7 @@ struct MicrophonePickerIconView: View {
             VStack(alignment: .leading, spacing: 0) {
                 if microphoneService.availableMicrophones.isEmpty {
                     Text("No microphones available")
-                        .foregroundColor(.secondary)
+                        .foregroundColor(Osier.inkSoft)
                         .padding()
                 } else {
                     ForEach(builtInMicrophones) { microphone in
@@ -1495,8 +1527,8 @@ struct MainRecordButton: View {
             .fill(
                 LinearGradient(
                     colors: [
-                        isRecording ? Color.red.opacity(0.8) : buttonColor.opacity(0.8),
-                        isRecording ? Color.red : buttonColor.opacity(0.9)
+                        isRecording ? Osier.recording.opacity(0.8) : buttonColor.opacity(0.8),
+                        isRecording ? Osier.recording : buttonColor.opacity(0.9)
                     ],
                     startPoint: .topLeading,
                     endPoint: .bottomTrailing
@@ -1504,7 +1536,7 @@ struct MainRecordButton: View {
             )
             .frame(width: 48, height: 48)
             .shadow(
-                color: isRecording ? .red.opacity(0.5) : buttonColor.opacity(0.3),
+                color: isRecording ? Osier.recording.opacity(0.5) : buttonColor.opacity(0.3),
                 radius: 12,
                 x: 0,
                 y: 0
@@ -1528,49 +1560,76 @@ struct MainRecordButton: View {
     }
 }
 
+/// Main-window surfaces. Like `STheme`, these are now **aliases onto `Osier`** — one ramp for the
+/// whole app. The `ColorScheme` argument is kept so the many call sites don't have to change, but
+/// it is unused: the palette resolves per-appearance in AppKit, which also means these follow a
+/// live Appearance switch without the window being rebuilt.
+///
+/// The previous values were a cool blue-gray set (white cards, `Color.blue` links, a blue record
+/// button). Wicker cream and willow green replace them wholesale.
 enum ThemePalette {
-    static func windowBackground(_ scheme: ColorScheme) -> Color {
-        scheme == .dark
-            ? Color(NSColor.underPageBackgroundColor)
-            : .white
+    static func windowBackground(_ scheme: ColorScheme) -> Color { Osier.surface }
+
+    static func panelSurface(_ scheme: ColorScheme) -> Color { Osier.surfaceSunken }
+
+    static func panelBorder(_ scheme: ColorScheme) -> Color { Osier.hairline }
+
+    static func cardBackground(_ scheme: ColorScheme) -> Color { Osier.surfaceRaised }
+
+    static func cardBorder(_ scheme: ColorScheme) -> Color { Osier.hairlineSoft }
+
+    /// Idle record button. Turns rust only while actually recording — see the gradient below.
+    static func recordButtonBase(_ scheme: ColorScheme) -> Color { Osier.mark }
+
+    /// Row icons: quiet by default, so the green accent means something when it does appear.
+    static func iconAccent(_ scheme: ColorScheme) -> Color { Osier.inkSoft }
+
+    static func linkText(_ scheme: ColorScheme) -> Color { Osier.mark }
+}
+
+/// The Willow-style lifetime stats header: dictated words · average speed · time saved.
+/// Deliberately no day streak. Reads from `RecordingStore.fetchStats()` via the view model.
+struct DictationStatsBar: View {
+    let stats: RecordingStore.DictationStats
+    @Environment(\.colorScheme) private var colorScheme
+
+    var body: some View {
+        HStack(spacing: 28) {
+            statColumn("Dictated words", stats.totalWords.formatted())
+            statColumn("Average speed", "\(Int(stats.averageWPM.rounded())) wpm")
+            statColumn("Time saved", Self.formatDuration(stats.timeSaved))
+            Spacer(minLength: 0)
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 10)
+        .background(ThemePalette.panelSurface(colorScheme))
+        .overlay(
+            RoundedRectangle(cornerRadius: 12)
+                .stroke(ThemePalette.panelBorder(colorScheme), lineWidth: 1)
+        )
+        .cornerRadius(12)
     }
 
-    static func panelSurface(_ scheme: ColorScheme) -> Color {
-        scheme == .dark
-            ? Color.gray.opacity(0.1)
-            : Color(red: 0.95, green: 0.96, blue: 0.98)
+    @ViewBuilder private func statColumn(_ label: String, _ value: String) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(label)
+                .font(.system(size: 11))
+                .foregroundColor(Osier.inkSoft)
+            Text(value)
+                .font(.system(size: 16, weight: .semibold, design: .rounded))
+                .monospacedDigit()
+        }
     }
 
-    static func panelBorder(_ scheme: ColorScheme) -> Color {
-        scheme == .dark
-            ? Color.gray.opacity(0.2)
-            : Color(red: 0.86, green: 0.88, blue: 0.92)
-    }
-
-    static func cardBackground(_ scheme: ColorScheme) -> Color {
-        scheme == .dark
-            ? Color(NSColor.controlBackgroundColor)
-            : Color.white
-    }
-
-    static func cardBorder(_ scheme: ColorScheme) -> Color {
-        scheme == .dark
-            ? Color(NSColor.separatorColor)
-            : Color(red: 0.86, green: 0.88, blue: 0.92)
-    }
-
-    static func recordButtonBase(_ scheme: ColorScheme) -> Color {
-        scheme == .dark
-            ? .white
-            : Color(red: 0.35, green: 0.60, blue: 0.92)
-    }
-
-    static func iconAccent(_ scheme: ColorScheme) -> Color {
-        scheme == .dark ? .accentColor : .primary
-    }
-
-    static func linkText(_ scheme: ColorScheme) -> Color {
-        scheme == .dark ? .blue : .primary
+    /// "3 days 4 hrs", "2 hrs 12 min", "8 min" — mirrors Willow's phrasing.
+    static func formatDuration(_ seconds: TimeInterval) -> String {
+        let totalMinutes = Int(seconds / 60)
+        let days = totalMinutes / (24 * 60)
+        let hours = (totalMinutes % (24 * 60)) / 60
+        let minutes = totalMinutes % 60
+        if days > 0 { return "\(days) days \(hours) hrs" }
+        if hours > 0 { return "\(hours) hrs \(minutes) min" }
+        return "\(minutes) min"
     }
 }
 
