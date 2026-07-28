@@ -1,43 +1,41 @@
 import SwiftUI
 import AppKit
 
-/// Design tokens for the redesigned Settings window ("Atelier" direction —
-/// Settings Explorations.dc.html). Copper accent, quiet surfaces, hairline
-/// sections. Adaptive: the dark values are the design's; light mode derives
-/// equivalent neutrals so the window follows the system appearance.
+/// Design tokens for the Settings window.
+///
+/// These are now **aliases onto `Osier`** — the brand palette is the single source of colour
+/// for the app, and this enum exists so the many `STheme.…` call sites keep working. Add new
+/// colours to `Osier`, not here.
+///
+/// The one substantive change from the previous "Atelier" direction: the accent was copper
+/// `#E8734A`, used decoratively on toggles, focus rings and section marks. That sits a hair
+/// away from the brand's rust, and rust has exactly one job now — *recording*. A rust-adjacent
+/// tint scattered through Settings would drain that signal of meaning, so the accent is willow
+/// leaf green and rust appears nowhere in this window.
 enum STheme {
-    private static func dyn(dark: NSColor, light: NSColor) -> Color {
-        Color(nsColor: NSColor(name: nil) { $0.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua ? dark : light })
-    }
-    private static func hex(_ v: UInt32, _ a: CGFloat = 1) -> NSColor {
-        NSColor(srgbRed: CGFloat((v >> 16) & 0xFF) / 255,
-                green: CGFloat((v >> 8) & 0xFF) / 255,
-                blue: CGFloat(v & 0xFF) / 255, alpha: a)
-    }
+    /// Willow leaf — the app accent. Green, so that rust stays reserved.
+    static let accent = Osier.mark
+    static let accentSoft = Osier.markWash
 
-    /// Copper accent — identical in both appearances.
-    static let accent = Color(nsColor: hex(0xE8734A))
-    static let accentSoft = dyn(dark: hex(0xE8734A, 0.13), light: hex(0xE8734A, 0.12))
+    static let windowBg  = Osier.surface
+    static let sidebarBg = Osier.surfaceSunken
+    static let border    = Osier.hairlineSoft
+    static let cardBg    = Osier.surfaceRaised
+    static let inputBg   = Osier.surfaceSunken
+    static let controlBg = Osier.surfaceRaised
+    static let controlBorder = Osier.hairline
 
-    static let windowBg  = dyn(dark: hex(0x161619), light: hex(0xF6F6F8))
-    static let sidebarBg = dyn(dark: hex(0x1B1B1F), light: hex(0xEEEEF1))
-    static let border    = dyn(dark: hex(0x26262B), light: hex(0xE0E0E5))
-    static let cardBg    = dyn(dark: hex(0x19191D), light: hex(0xFFFFFF))
-    static let inputBg   = dyn(dark: hex(0x101013), light: hex(0xFFFFFF))
-    static let controlBg = dyn(dark: hex(0x26262D), light: hex(0xFFFFFF))
-    static let controlBorder = dyn(dark: hex(0x34343C), light: hex(0xD5D5DC))
+    static let text      = Osier.ink
+    static let textBright = Osier.inkBright
+    static let hint      = Osier.inkFaint
+    static let sectionTitle = Osier.inkFaint
+    static let sidebarItem = Osier.inkSoft
 
-    static let text      = dyn(dark: hex(0xD9D9E0), light: hex(0x2A2A30))
-    static let textBright = dyn(dark: hex(0xE8E8EA), light: hex(0x1A1A1E))
-    static let hint      = dyn(dark: hex(0x6D6D78), light: hex(0x8A8A94))
-    static let sectionTitle = dyn(dark: hex(0x6D6D78), light: hex(0x9494A0))
-    static let sidebarItem = dyn(dark: hex(0xB9B9C2), light: hex(0x4A4A52))
-
-    static let warn      = Color(nsColor: hex(0xF0A35E))
-    static let warnBg    = dyn(dark: hex(0xF0A35E, 0.07), light: hex(0xF0A35E, 0.12))
-    static let warnBorder = dyn(dark: hex(0xF0A35E, 0.30), light: hex(0xF0A35E, 0.45))
-    static let ok        = dyn(dark: hex(0x4ADE80), light: hex(0x2EA562))
-    static let okBg      = dyn(dark: hex(0x3CC878, 0.14), light: hex(0x2EA562, 0.14))
+    static let warn      = Osier.caution
+    static let warnBg    = Osier.cautionWash
+    static let warnBorder = Osier.cautionBorder
+    static let ok        = Osier.success
+    static let okBg      = Osier.successWash
 }
 
 // MARK: - Reusable pieces
