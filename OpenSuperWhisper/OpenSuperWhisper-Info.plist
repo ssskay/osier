@@ -29,13 +29,13 @@
 	<string>Osier needs accessibility access to provide system-wide functionality.</string>
 	<key>NSAppleEventsUsageDescription</key>
 	<string>Osier reads the active browser tab's URL to record where a dictation happened and to apply per-site model rules.</string>
-	<!-- Sparkle is disarmed on purpose. The feed below is my-monkeys' appcast: with
-	     automatic checks on, this hard fork would offer to "update" itself into their
-	     build, silently replacing Osier. SPEC.md §7 rules out releases entirely, so
-	     there is nothing to check for. Keys kept (not deleted) so the wiring is still
-	     visible if a real Osier feed ever exists. -->
-	<key>SUFeedURL</key>
-	<string>https://raw.githubusercontent.com/my-monkeys/OpenSuperWhisper/master/appcast.xml</string>
+	<!-- No SUFeedURL on purpose. Osier is a hard fork and has no appcast of its own yet;
+	     the key used to hold my-monkeys' feed, which meant the "Check for Updates…" menu
+	     item (a live manual trigger, regardless of SUEnableAutomaticChecks) would fetch
+	     upstream's appcast and offer their DMG — signed with the SUPublicEDKey below, so
+	     it would even verify. With no feed key, Sparkle has nothing to fetch.
+	     SUPublicEDKey is inert without a feed and is kept only as a placeholder; it is
+	     upstream's key and MUST be replaced with Osier's own before any feed is set. -->
 	<key>SUPublicEDKey</key>
 	<string>ECQpCBVVumUKoBjgcDPSlmllYiWlSAUFGh5WycBhCA0=</string>
 	<key>SUEnableAutomaticChecks</key>

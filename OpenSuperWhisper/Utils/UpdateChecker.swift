@@ -23,7 +23,7 @@ struct GitHubRelease: Decodable, Identifiable {
 /// Checks for app updates and lists release notes via the public GitHub Releases API
 /// (no auth, no Sparkle). The actual download is a link to the release page.
 enum UpdateChecker {
-    static let repo = "my-monkeys/OpenSuperWhisper"
+    static let repo = "ssskay/osier"
     static let releasesURL = URL(string: "https://github.com/\(repo)/releases")!
 
     static var currentVersion: String {

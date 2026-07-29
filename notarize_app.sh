@@ -4,8 +4,7 @@ set -e
 # === Configuration ===
 # Usage: ./notarize_app.sh "Developer ID Application: … (TEAMID)" [arm64|x86_64]
 #   arm64  (default) — Apple Silicon, all three engines (Whisper, Parakeet, SenseVoice)
-#   x86_64           — Intel; SenseVoice is dropped (onnxruntime ships arm64-only), and the
-#                      build points Sparkle at its own appcast (appcast-x86_64.xml).
+#   x86_64           — Intel; SenseVoice is dropped (onnxruntime ships arm64-only).
 APP_NAME="OpenSuperWhisper"
 APP_PATH="./build/Build/Products/Release/OpenSuperWhisper.app"
 ZIP_PATH="./build/OpenSuperWhisper.zip"
@@ -99,14 +98,13 @@ xcodebuild \
   -derivedDataPath build \
   build | xcpretty --simple --color
 
-# Intel build: drop the arm64-only onnxruntime (unused, SenseVoice is compiled out) and point
-# Sparkle at the x86_64 feed so the two arch variants never offer each other's downloads.
+# Intel build: drop the arm64-only onnxruntime (unused, SenseVoice is compiled out).
+# No SUFeedURL is set here any more — it used to point at my-monkeys' x86_64 appcast, which
+# would have offered upstream's Intel DMG to Osier users. When Osier publishes its own feeds,
+# restore the per-arch Set here so the two arch variants never offer each other's downloads.
 if [ "${ARCH}" = "x86_64" ]; then
-  echo "x86_64: stripping arm64 onnxruntime + setting x86_64 appcast feed..."
+  echo "x86_64: stripping arm64 onnxruntime..."
   rm -f "${APP_PATH}/Contents/Frameworks/libonnxruntime"*.dylib
-  /usr/libexec/PlistBuddy -c \
-    "Set :SUFeedURL https://raw.githubusercontent.com/my-monkeys/OpenSuperWhisper/master/appcast-x86_64.xml" \
-    "${APP_PATH}/Contents/Info.plist"
 fi
 
 # Sparkle embeds nested helpers (Updater.app, Autoupdate, XPC services) that each need a

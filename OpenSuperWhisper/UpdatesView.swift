@@ -4,6 +4,7 @@ import SwiftUI
 /// update check, and the release-note history pulled from GitHub Releases.
 struct UpdatesView: View {
     @State private var releases: [GitHubRelease] = []
+    @State private var hasLoadedReleases = false
     @State private var isChecking = false
     @State private var availableUpdate: GitHubRelease?
     @State private var statusMessage: String?
@@ -74,7 +75,9 @@ struct UpdatesView: View {
     private var whatsNewSection: some View {
         SSection(title: "What's new") {
             if releases.isEmpty {
-                Text("Loading release notes…")
+                // Osier has published no releases yet, so an empty list is the normal
+                // steady state — not a pending fetch. Only claim "loading" before it lands.
+                Text(hasLoadedReleases ? "No release notes yet." : "Loading release notes…")
                     .font(.system(size: 11))
                     .foregroundColor(STheme.hint)
             } else {
@@ -121,8 +124,9 @@ struct UpdatesView: View {
     }
 
     private func loadReleases() async {
-        guard releases.isEmpty else { return }
+        guard !hasLoadedReleases else { return }
         releases = (try? await UpdateChecker.fetchReleases()) ?? []
+        hasLoadedReleases = true
     }
 
     private func checkForUpdates() async {
@@ -134,6 +138,7 @@ struct UpdatesView: View {
         do {
             let fetched = try await UpdateChecker.fetchReleases()
             releases = fetched
+            hasLoadedReleases = true
             if let update = UpdateChecker.availableUpdate(in: fetched) {
                 availableUpdate = update
             } else {
