@@ -127,3 +127,6 @@ dev_config.json
 
 build-test/
 vendor/
+
+## Agent tooling session state (local only)
+.construct/
