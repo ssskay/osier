@@ -104,7 +104,7 @@ struct RemoteSettingsSection: View {
                     }
                     Divider()
                     Button("Request a built-in preset…") {
-                        if let url = URL(string: "https://github.com/my-monkeys/OpenSuperWhisper/issues") {
+                        if let url = URL(string: "https://github.com/ssskay/osier/issues") {
                             NSWorkspace.shared.open(url)
                         }
                     }

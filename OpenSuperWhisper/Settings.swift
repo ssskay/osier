@@ -1290,7 +1290,7 @@ struct SettingsView: View {
                     title: "Report a bug",
                     subtitle: "On GitHub — steps to reproduce, your macOS version & engine, logs if you have them",
                     icon: "ladybug",
-                    url: "https://github.com/my-monkeys/OpenSuperWhisper/issues/new")
+                    url: "https://github.com/ssskay/osier/issues/new")
                 feedbackLink(
                     title: "Send feedback or an idea",
                     subtitle: "A quick form on opensuperwhisper.com — no account needed",
@@ -1300,7 +1300,7 @@ struct SettingsView: View {
                     title: "Try a beta build",
                     subtitle: "Early features before they ship, on GitHub Releases",
                     icon: "testtube.2",
-                    url: "https://github.com/my-monkeys/OpenSuperWhisper/releases")
+                    url: "https://github.com/ssskay/osier/releases")
             }
         }
     }
@@ -1411,24 +1411,8 @@ struct SettingsView: View {
                 ForEach(SettingsTab.footer.filter(matchesSearch)) { tab in
                     sidebarRow(tab, compact: true)
                 }
-                Button {
-                    if let url = URL(string: "https://ko-fi.com/mymonkey") { NSWorkspace.shared.open(url) }
-                } label: {
-                    HStack(spacing: 10) {
-                        Image(systemName: "heart")
-                            .font(.system(size: 11, weight: .medium))
-                            .frame(width: 18, alignment: .center)
-                            .foregroundColor(STheme.hint)
-                        Text("Support us").font(.system(size: 12, weight: .medium))
-                        Spacer(minLength: 0)
-                    }
-                    .padding(.horizontal, 10).padding(.vertical, 5)
-                    .foregroundStyle(STheme.sidebarItem)
-                    .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
                 HStack(spacing: 6) {
-                    Link(destination: URL(string: "https://github.com/my-monkeys/OpenSuperWhisper")!) {
+                    Link(destination: URL(string: "https://github.com/ssskay/osier")!) {
                         HStack(spacing: 6) {
                             Image("github-mark")
                                 .resizable()
@@ -1442,7 +1426,7 @@ struct SettingsView: View {
                     }
                     .help("GitHub")
                     Spacer()
-                    Link(destination: URL(string: "https://github.com/my-monkeys/OpenSuperWhisper")!) {
+                    Link(destination: URL(string: "https://github.com/ssskay/osier")!) {
                         Image(systemName: "star")
                             .font(.system(size: 10))
                             .foregroundColor(STheme.hint.opacity(0.8))
