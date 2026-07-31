@@ -8,9 +8,11 @@ How a version of Osier goes from working tree to a signed, notarized DMG on
 1. **Signing identity** — `Developer ID Application: Sara Kay (AH785WYH3F)` must be in the
    login keychain. `Scripts/dev-codesign.sh` reads the pinned identity from
    `.osw-codesign-identity` (gitignored) for day-to-day dev builds.
-2. **Notary credentials** — stored once under the keychain profile `osw-notary`:
+2. **Notary credentials** — stored once under the keychain profile `AC_NOTARY` (shared with
+   Sara's other notarized apps, so it may already exist):
    ```sh
-   xcrun notarytool store-credentials osw-notary \
+   xcrun notarytool history --keychain-profile AC_NOTARY   # already set up?
+   xcrun notarytool store-credentials AC_NOTARY \
      --apple-id <apple-id> --team-id AH785WYH3F --password <app-specific-password>
    ```
 3. **gh CLI** — `brew install gh && gh auth login` as `ssskay`.

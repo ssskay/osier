@@ -9,7 +9,7 @@ set -e
 #
 # Prereqs (one-time, documented in docs/RELEASING.md):
 #   - gh auth login (as ssskay)
-#   - notarytool credentials stored under keychain profile "osw-notary"
+#   - notarytool credentials stored under keychain profile "AC_NOTARY"
 #   - Osier's own Sparkle Ed25519 keypair (SUPublicEDKey in Info.plist must be
 #     YOURS, not upstream's, before shipping an appcast feed)
 
