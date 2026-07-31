@@ -5,14 +5,14 @@ set -e
 # Usage: ./notarize_app.sh "Developer ID Application: … (TEAMID)" [arm64|x86_64]
 #   arm64  (default) — Apple Silicon, all three engines (Whisper, Parakeet, SenseVoice)
 #   x86_64           — Intel; SenseVoice is dropped (onnxruntime ships arm64-only).
-APP_NAME="OpenSuperWhisper"
-APP_PATH="./build/Build/Products/Release/OpenSuperWhisper.app"
-ZIP_PATH="./build/OpenSuperWhisper.zip"
-BUNDLE_ID="fr.my-monkey.opensuperwhisper"
+APP_NAME="Osier"
+APP_PATH="./build/Build/Products/Release/Osier.app"
+ZIP_PATH="./build/Osier.zip"
+BUNDLE_ID="me.sarakay.osier"
 KEYCHAIN_PROFILE="osw-notary"
 CODE_SIGN_IDENTITY="${1}"
 ARCH="${2:-arm64}"
-DEVELOPMENT_TEAM="5C67TFSJ2B"
+DEVELOPMENT_TEAM="AH785WYH3F"
 DMG_NAME="${APP_NAME}-${ARCH}"
 
 if [ "${ARCH}" != "arm64" ] && [ "${ARCH}" != "x86_64" ]; then

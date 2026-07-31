@@ -130,3 +130,8 @@ vendor/
 
 ## Agent tooling session state (local only)
 .construct/
+
+## Local working docs and test fixtures (not shipped)
+dev-docs/
+ggml-tiny.en.bin
+jfk.wav
