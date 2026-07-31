@@ -24,7 +24,7 @@ fi
 
 echo "Running $ONLY"
 xcodebuild test \
-    -scheme OpenSuperWhisper \
+    -scheme Osier \
     -configuration Debug \
     -derivedDataPath build \
     -destination 'platform=macOS,arch=arm64' \

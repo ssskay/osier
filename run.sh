@@ -111,7 +111,7 @@ copy_dylibs() {
 }
 
 resolve_packages() {
-    xcodebuild -resolvePackageDependencies -scheme OpenSuperWhisper -derivedDataPath build \
+    xcodebuild -resolvePackageDependencies -scheme Osier -derivedDataPath build \
         -clonedSourcePackagesDirPath SourcePackages \
         -skipPackagePluginValidation -skipMacroValidation
 }
@@ -119,7 +119,7 @@ resolve_packages() {
 # xcodebuild exits 0 on some failures it reports only in its output, so the log is checked for
 # BUILD FAILED as well as the exit status.
 build_app() {
-    xcodebuild -scheme OpenSuperWhisper -configuration Debug -jobs 8 -derivedDataPath build \
+    xcodebuild -scheme Osier -configuration Debug -jobs 8 -derivedDataPath build \
         -quiet -destination 'platform=macOS,arch=arm64' \
         -skipPackagePluginValidation -skipMacroValidation -UseModernBuildSystem=YES \
         -clonedSourcePackagesDirPath SourcePackages -skipUnavailableActions \

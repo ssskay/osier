@@ -130,7 +130,7 @@ ln -sf libonnxruntime.1.24.4.dylib ./build/libonnxruntime.dylib
 codesign --force --sign "${CODE_SIGN_IDENTITY}" --timestamp ./build/libonnxruntime.1.24.4.dylib
 
 xcodebuild \
-  -scheme "OpenSuperWhisper" \
+  -scheme "Osier" \
   -configuration Release \
   -destination "generic/platform=macOS" \
   ARCHS="${ARCH}" ONLY_ACTIVE_ARCH=NO \
