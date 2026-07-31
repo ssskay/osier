@@ -14,16 +14,18 @@ How a version of Osier goes from working tree to a signed, notarized DMG on
      --apple-id <apple-id> --team-id AH785WYH3F --password <app-specific-password>
    ```
 3. **gh CLI** — `brew install gh && gh auth login` as `ssskay`.
-4. **Sparkle keypair (before enabling auto-update)** — the `SUPublicEDKey` currently in
-   `OpenSuperWhisper/OpenSuperWhisper-Info.plist` is **upstream's** and is inert only because
-   no `SUFeedURL` is set. Before publishing an appcast feed:
+4. **Sparkle keypair** — done. `SUPublicEDKey` in
+   `OpenSuperWhisper/OpenSuperWhisper-Info.plist` is Osier's own, generated with Sparkle
+   2.9.4 `bin/generate_keys`; the private half is in the login keychain (item
+   *"Private key for signing Sparkle updates"*). **Back it up** — losing it means no
+   existing install can ever verify an update again:
    ```sh
-   # from a Sparkle distribution (bin/generate_keys)
-   ./bin/generate_keys        # stores the private key in the login keychain
+   ./bin/generate_keys -x sparkle-private-key.txt   # then store it somewhere safe, offline
    ```
-   Put the printed public key into `SUPublicEDKey`, and only then add `SUFeedURL`
+   The key stays inert until a feed exists. When publishing one, add `SUFeedURL`
    (`https://raw.githubusercontent.com/ssskay/osier/main/appcast.xml`, or the
-   `appcast-x86_64.xml` variant for Intel builds).
+   `appcast-x86_64.xml` variant for Intel builds) — and make sure the appcast entries are
+   signed with *this* key, not upstream's.
 
 ## Cutting a release
 

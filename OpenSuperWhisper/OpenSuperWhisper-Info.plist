@@ -34,10 +34,11 @@
 	     item (a live manual trigger, regardless of SUEnableAutomaticChecks) would fetch
 	     upstream's appcast and offer their DMG — signed with the SUPublicEDKey below, so
 	     it would even verify. With no feed key, Sparkle has nothing to fetch.
-	     SUPublicEDKey is inert without a feed and is kept only as a placeholder; it is
-	     upstream's key and MUST be replaced with Osier's own before any feed is set. -->
+	     SUPublicEDKey is now Osier's own (generated with Sparkle 2.9.4 bin/generate_keys;
+	     the private half lives in Sara's login keychain). It stays inert until a feed is
+	     set — see docs/RELEASING.md before adding SUFeedURL. -->
 	<key>SUPublicEDKey</key>
-	<string>ECQpCBVVumUKoBjgcDPSlmllYiWlSAUFGh5WycBhCA0=</string>
+	<string>e90KkxchnYkL3XMEws2sp3TvOLxThyUV1g2Ww1CfaK8=</string>
 	<key>SUEnableAutomaticChecks</key>
 	<false/>
 	<key>NSAppTransportSecurity</key>
