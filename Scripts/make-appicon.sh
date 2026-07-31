@@ -55,8 +55,13 @@ struct AppIconTile: View {
                 .frame(width: side, height: side)
                 .shadow(color: .black.opacity(0.18), radius: px * 0.012, x: 0, y: px * 0.008)
 
+            // The mark's share of the tile. At 0.62 it read as a small badge floating in a large
+            // cream field and got lost at Dock size. 0.78 fills the tile the way a macOS app icon
+            // is meant to, and — because SpeakingStrand sizes every stroke as a fraction of its
+            // frame — it thickens the strands in absolute pixels too, which is what buys back
+            // legibility at 32px. Past ~0.80 the ring starts to crowd the rounded square's edge.
             SpeakingStrand(state: .idle, ring: Osier.leaf, strand: Osier.leaf)
-                .frame(width: side * 0.62, height: side * 0.62)
+                .frame(width: side * 0.78, height: side * 0.78)
         }
         .frame(width: px, height: px)
     }
