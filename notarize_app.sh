@@ -34,6 +34,50 @@ if [[ "${XCODE_DIR}" == *[Bb]eta* && "${ALLOW_BETA_XCODE:-0}" != "1" ]]; then
   exit 1
 fi
 
+# === Preflight ===
+# Everything below is needed *after* a 10-15 minute build, or midway through it. Checking it
+# here turns "wait 15 minutes, then fail" into a two-second error with the fix attached.
+# Each of these has actually broken a release: the missing Rust target and xcpretty both
+# killed the v1.0.0 cut, and an unset LANG crashed xcpretty on non-ASCII build output.
+PREFLIGHT_FAIL=0
+preflight_err() { echo "❌ $1"; echo "   fix: $2"; PREFLIGHT_FAIL=1; }
+
+# Rust: the autocorrect dylib is built for BOTH arches and lipo'd, so an arm64-only release
+# still needs the x86_64 target installed.
+if ! command -v cargo >/dev/null; then
+  preflight_err "cargo not found" "install Rust: https://rustup.rs"
+else
+  RUST_TARGETS="$(rustup target list --installed 2>/dev/null || true)"
+  for t in aarch64-apple-darwin x86_64-apple-darwin; do
+    grep -qx "$t" <<<"$RUST_TARGETS" || preflight_err "Rust target '$t' not installed" "rustup target add $t"
+  done
+fi
+
+# xcpretty formats the xcodebuild stream; the build pipes into it, so a missing binary
+# fails the whole pipeline. It's in the Gemfile but is invoked bare, not via bundle exec.
+command -v xcpretty >/dev/null || \
+  preflight_err "xcpretty not found on PATH" "gem install --user-install xcpretty  (then add \$(ruby -e 'puts Gem.user_dir')/bin to PATH)"
+
+# Notary credentials — checked now rather than after the build, since that's the most
+# expensive place to discover a bad profile.
+xcrun notarytool history --keychain-profile "${KEYCHAIN_PROFILE}" >/dev/null 2>&1 || \
+  preflight_err "no usable notary profile '${KEYCHAIN_PROFILE}'" \
+                "xcrun notarytool store-credentials ${KEYCHAIN_PROFILE} --apple-id <id> --team-id ${DEVELOPMENT_TEAM} --password <app-specific-password>"
+
+[ "$PREFLIGHT_FAIL" -eq 0 ] || { echo; echo "Preflight failed — nothing was built."; exit 1; }
+
+# Ruby reads its default encoding from the locale. With LANG/LC_ALL unset (common in
+# non-interactive shells and CI), it defaults to US-ASCII and xcpretty dies with
+# "invalid byte sequence in US-ASCII" the moment the build log contains non-ASCII.
+# Self-healing rather than fatal: the correct value is unambiguous.
+case "${LC_ALL:-${LANG:-}}" in
+  *UTF-8*|*utf8*) ;;
+  *) export LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8
+     echo "ℹ️  locale was not UTF-8 — set LANG/LC_ALL=en_US.UTF-8 for this build (xcpretty needs it)." ;;
+esac
+
+echo "✅ Preflight OK"
+
 echo "=== Building ${APP_NAME} for ${ARCH} (toolchain: ${XCODE_DIR}) ==="
 
 ./Scripts/fetch-sherpa.sh

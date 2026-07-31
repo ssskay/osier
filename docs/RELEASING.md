@@ -16,14 +16,31 @@ How a version of Osier goes from working tree to a signed, notarized DMG on
      --apple-id <apple-id> --team-id AH785WYH3F --password <app-specific-password>
    ```
 3. **gh CLI** — `brew install gh && gh auth login` as `ssskay`.
-4. **Sparkle keypair** — done. `SUPublicEDKey` in
+4. **Rust + both Apple targets** — the autocorrect dylib is built for arm64 *and* x86_64 and
+   `lipo`'d together, so even an arm64-only release needs the Intel target:
+   ```sh
+   rustup target add aarch64-apple-darwin x86_64-apple-darwin
+   ```
+5. **xcpretty** — the build pipes into it, so a missing binary fails the whole pipeline. It's
+   in the `Gemfile`, but `notarize_app.sh` invokes it bare rather than through `bundle exec`,
+   so it has to be on `PATH`:
+   ```sh
+   gem install --user-install xcpretty
+   export PATH="$(ruby -e 'puts Gem.user_dir')/bin:$PATH"   # add to ~/.zshrc
+   ```
+6. **A UTF-8 locale** — Ruby takes its default encoding from the locale. With `LANG`/`LC_ALL`
+   unset (common in non-interactive shells and CI) it falls back to US-ASCII and xcpretty dies
+   with `invalid byte sequence in US-ASCII`. `notarize_app.sh` sets a UTF-8 default itself, but
+   set it in your shell too: `export LANG=en_US.UTF-8`.
+7. **A stable Xcode** — `notarize_app.sh` refuses beta toolchains (see the comment there).
+
+Items 2 and 4–6 are enforced by the preflight block at the top of `notarize_app.sh`, which
+fails in about two seconds with the exact fix rather than after a 15-minute build.
+
+8. **Sparkle keypair** — done. `SUPublicEDKey` in
    `OpenSuperWhisper/OpenSuperWhisper-Info.plist` is Osier's own, generated with Sparkle
    2.9.4 `bin/generate_keys`; the private half is in the login keychain (item
-   *"Private key for signing Sparkle updates"*). **Back it up** — losing it means no
-   existing install can ever verify an update again:
-   ```sh
-   ./bin/generate_keys -x sparkle-private-key.txt   # then store it somewhere safe, offline
-   ```
+   *"Private key for signing Sparkle updates"*) and is backed up offline.
    The key stays inert until a feed exists. When publishing one, add `SUFeedURL`
    (`https://raw.githubusercontent.com/ssskay/osier/main/appcast.xml`, or the
    `appcast-x86_64.xml` variant for Intel builds) — and make sure the appcast entries are
