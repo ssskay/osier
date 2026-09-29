@@ -140,6 +140,8 @@ xcodebuild \
   OTHER_CODE_SIGN_FLAGS=--timestamp \
   CODE_SIGN_INJECT_BASE_ENTITLEMENTS=NO \
   -derivedDataPath build \
+  -clonedSourcePackagesDirPath SourcePackages \
+  -skipPackagePluginValidation -skipMacroValidation \
   build | xcpretty --simple --color
 
 # Intel build: drop the arm64-only onnxruntime (unused, SenseVoice is compiled out).

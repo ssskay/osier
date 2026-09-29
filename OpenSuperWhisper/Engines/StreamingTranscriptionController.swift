@@ -47,9 +47,10 @@ final class StreamingTranscriptionController: ObservableObject {
         confirmedText = ""
         volatileText = ""
 
-        let versionString = AppPreferences.shared.fluidAudioModelVersion
-        let version: AsrModelVersion = versionString == "v2" ? .v2 : .v3
-        let models = try await AsrModels.downloadAndLoad(version: version)
+        // Shared, already-loaded models — a fresh CoreML load here delayed the first caption on
+        // every recording. (#parakeet-latency)
+        let models = try await ParakeetModelCache.shared.models(
+            versionString: AppPreferences.shared.fluidAudioModelVersion)
 
         // Small windows so a rough preview appears quickly (the default 11–15s window emits
         // nothing for short dictations). First text lands at ~chunk+right ≈ 1.8s, then ~every
@@ -147,16 +148,8 @@ final class StreamingTranscriptionController: ObservableObject {
     }
 
     private func configureVocabulary(on manager: SlidingWindowAsrManager, boostTerms: [String]) async {
-        let terms = boostTerms.filter { !$0.isEmpty }
-        guard !terms.isEmpty else { return }
-        let vocabularyURL = FileManager.default.temporaryDirectory
-            .appendingPathComponent("OpenSuperWhisper-StreamVocab-\(UUID().uuidString)")
-            .appendingPathExtension("txt")
         do {
-            try terms.joined(separator: "\n").write(to: vocabularyURL, atomically: true, encoding: .utf8)
-            defer { try? FileManager.default.removeItem(at: vocabularyURL) }
-            let vocab = try await CustomVocabularyContext.loadWithCtcTokens(from: vocabularyURL.path)
-            guard !vocab.vocab.terms.isEmpty else { return }
+            guard let vocab = try await ParakeetModelCache.shared.vocabulary(terms: boostTerms) else { return }
             try await manager.configureVocabularyBoosting(vocabulary: vocab.vocab, ctcModels: vocab.models)
         } catch {
             print("Streaming custom vocabulary unavailable: \(error)")

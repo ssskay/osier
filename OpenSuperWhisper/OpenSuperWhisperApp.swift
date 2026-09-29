@@ -120,6 +120,18 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, ObservableOb
 
         setupStatusBarItem()
 
+        // Warm the Parakeet models in the background so the FIRST dictation after launch doesn't
+        // pay the CoreML load. Never downloads (prewarm bails if the models aren't on disk).
+        if AppPreferences.shared.selectedEngine == "fluidaudio" {
+            let prefs = AppPreferences.shared
+            let version = prefs.fluidAudioModelVersion
+            let terms = (prefs.customDictionaryEnabled && prefs.customDictionaryBoostEnabled)
+                ? CustomDictionary.boostTerms(entries: prefs.customDictionaryEntries) : []
+            Task.detached(priority: .utility) {
+                await ParakeetModelCache.shared.prewarm(versionString: version, boostTerms: terms)
+            }
+        }
+
         if let window = NSApplication.shared.windows.first(where: { $0.title != "Settings" }) {
             self.mainWindow = window
             window.delegate = self

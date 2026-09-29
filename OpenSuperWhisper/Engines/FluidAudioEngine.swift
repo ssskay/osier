@@ -28,9 +28,8 @@ class FluidAudioEngine: TranscriptionEngine {
     
     func initialize() async throws {
         let versionString = versionOverride ?? AppPreferences.shared.fluidAudioModelVersion
-        let version: AsrModelVersion = versionString == "v2" ? .v2 : .v3
 
-        let models = try await AsrModels.downloadAndLoad(version: version)
+        let models = try await ParakeetModelCache.shared.models(versionString: versionString)
         let manager = AsrManager(config: .default)
         try await manager.loadModels(models)
 
@@ -143,20 +142,51 @@ class FluidAudioEngine: TranscriptionEngine {
         return CustomDictionary.boostTerms(entries: prefs.customDictionaryEntries)
     }
 
+    /// Window config for the file-boosting pass. The geometry is the proven 11+2+2 layout, exactly
+    /// as `.default` — but both confirmation gates are zeroed, and that difference is load-bearing.
+    ///
+    /// `SlidingWindowAsrManager` is built for LIVE captions. Each window's text lands in a
+    /// `volatile` slot and is only promoted to `confirmed` by the *next* window that clears
+    /// `confirmationThreshold` AND `minContextForConfirmation`. A window that misses either gate
+    /// overwrites the volatile slot instead — silently destroying the previous window's ~11s of
+    /// speech — and `finish()` returns just `confirmed + volatile`. Holding text back until a later
+    /// window vouches for it is right for a live caption, which can still revise itself; a finished
+    /// file has nothing left to revise, so withholding a window only loses it.
+    ///
+    /// The tail took the damage because the last window is always a short partial chunk (3–7s),
+    /// which is the one least likely to clear the gates — and nothing follows it to promote the
+    /// full window before it. Measured on a 14.1s clip: `.default` returned ", you know." (11
+    /// chars) against 268 chars from the offline path. Zeroing both gates confirms every window,
+    /// making the pass lossless. (#tail-truncation)
+    static let fileBoostingConfig = SlidingWindowAsrConfig(
+        chunkSeconds: 11.0,
+        hypothesisChunkSeconds: 2.0,
+        leftContextSeconds: 2.0,
+        rightContextSeconds: 2.0,
+        minContextForConfirmation: 0,
+        confirmationThreshold: 0
+    )
+
     /// Transcribes a whole file through a `SlidingWindowAsrManager` configured with vocabulary
     /// boosting — the only API surface in FluidAudio 0.15.4 that biases the Parakeet decoder
-    /// toward custom terms. The 11+2+2 `.default` window matches the offline chunking, so output
-    /// quality tracks the offline path; boosting only nudges misrecognized terms.
+    /// toward custom terms. The 11+2+2 window matches the offline chunking, so output quality
+    /// tracks the offline path; boosting only nudges misrecognized terms.
     ///
     /// The audio comes entirely from `streamAudio(_:)` (the WAV read into one buffer, then sliced),
     /// never a microphone — `startStreaming(source:)` only records the source as metadata and opens
     /// no input device. `finish()` returns the merged transcript.
     private func transcribeFileWithBoosting(url: URL, boostTerms: [String]) async throws -> String {
-        let versionString = AppPreferences.shared.fluidAudioModelVersion
-        let version: AsrModelVersion = versionString == "v2" ? .v2 : .v3
-        let models = try await AsrModels.downloadAndLoad(version: version)
+        // Reuse the models this engine already loaded (and honour `versionOverride`, which the
+        // old per-call reload ignored). Reloading here cost a full CoreML load per dictation.
+        let models: AsrModels
+        if let asrModels {
+            models = asrModels
+        } else {
+            models = try await ParakeetModelCache.shared.models(
+                versionString: versionOverride ?? AppPreferences.shared.fluidAudioModelVersion)
+        }
 
-        let manager = SlidingWindowAsrManager(config: .default)
+        let manager = SlidingWindowAsrManager(config: Self.fileBoostingConfig)
         try await configureVocabulary(on: manager, boostTerms: boostTerms)
         try await manager.loadModels(models)
         try await manager.startStreaming(source: .system)
@@ -173,7 +203,7 @@ class FluidAudioEngine: TranscriptionEngine {
         try audioFile.read(into: buffer)
 
         // Feed in window-sized chunks (the manager re-buffers internally for its sliding window).
-        let samplesPerChunk = Int(SlidingWindowAsrConfig.default.chunkSeconds * format.sampleRate)
+        let samplesPerChunk = Int(Self.fileBoostingConfig.chunkSeconds * format.sampleRate)
         var position = 0
         let totalFrames = Int(buffer.frameLength)
         while position < totalFrames {
@@ -202,18 +232,8 @@ class FluidAudioEngine: TranscriptionEngine {
     /// using the same temp-file + CTC-token approach the engine has always used. Throws on failure
     /// so the caller surfaces it rather than silently transcribing without the requested boost.
     private func configureVocabulary(on manager: SlidingWindowAsrManager, boostTerms: [String]) async throws {
-        let terms = boostTerms.filter { !$0.isEmpty }
-        guard !terms.isEmpty else { return }
-
-        let vocabularyURL = FileManager.default.temporaryDirectory
-            .appendingPathComponent("OpenSuperWhisper-ParakeetVocabulary-\(UUID().uuidString)")
-            .appendingPathExtension("txt")
-        try terms.joined(separator: "\n").write(to: vocabularyURL, atomically: true, encoding: .utf8)
-        defer { try? FileManager.default.removeItem(at: vocabularyURL) }
-
-        let vocabulary = try await CustomVocabularyContext.loadWithCtcTokens(from: vocabularyURL.path)
-        guard !vocabulary.vocab.terms.isEmpty else { return }
-
+        // Cached: CTC models + tokenization are loaded once per dictionary revision, not per clip.
+        guard let vocabulary = try await ParakeetModelCache.shared.vocabulary(terms: boostTerms) else { return }
         try await manager.configureVocabularyBoosting(
             vocabulary: vocabulary.vocab,
             ctcModels: vocabulary.models
