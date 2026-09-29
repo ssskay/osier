@@ -10,6 +10,9 @@
 
 </div>
 
+<!-- sarakay.me/downloads -->
+**[⬇ Download for Mac (Apple Silicon)](https://sarakay.me/get/osier/mac-arm64)** · [all formats & checksums](https://sarakay.me/downloads.html#osier)
+
 ## Credits — this is a hard fork
 
 Osier is a personal hard fork of
