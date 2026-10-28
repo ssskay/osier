@@ -1292,11 +1292,6 @@ struct SettingsView: View {
                     icon: "ladybug",
                     url: "https://github.com/ssskay/osier/issues/new")
                 feedbackLink(
-                    title: "Send feedback or an idea",
-                    subtitle: "A quick form on opensuperwhisper.com — no account needed",
-                    icon: "bubble.left.and.bubble.right",
-                    url: "https://opensuperwhisper.com/#feedback")
-                feedbackLink(
                     title: "Try a beta build",
                     subtitle: "Early features before they ship, on GitHub Releases",
                     icon: "testtube.2",
